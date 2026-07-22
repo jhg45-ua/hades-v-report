@@ -508,67 +508,72 @@ de la I-Cache, forzando a la etapa de \textit{Fetch} a recargar el código fresc
 \begin{tikzpicture}[scale=0.88, every node/.style={transform shape, font=\sffamily\small}]
 
     % 1. BLOQUE DE LA CPU (Segmentación)
-    \draw[thick, fill=blue!5, rounded corners=3mm] (-0.5, 5.2) rectangle (11.5, 7.8);
-    \node[anchor=west, color=blue!80!black] at (0, 7.4) {\textbf{Núcleo Procesador HaDes-V (Pipeline de 5 Etapas)}};
+    \draw[thick, fill=blue!5, rounded corners=3mm] (-0.5, 6.0) rectangle (11.5, 8.8);
+    \node[anchor=west, color=blue!80!black] at (0, 8.4) {\textbf{Núcleo Procesador HaDes-V (Pipeline de 5 Etapas)}};
     
     % Etapas internas
-    \draw[thick, fill=white] (0.2, 5.6) rectangle (1.8, 6.8) node[midway, align=center] {\textbf{\footnotesize Fetch}\\[-2pt]\tiny (IF)};
-    \draw[thick, fill=white] (2.4, 5.6) rectangle (4.0, 6.8) node[midway, align=center] {\textbf{\footnotesize Decode}\\[-2pt]\tiny (ID)};
-    \draw[thick, fill=white] (4.6, 5.6) rectangle (6.2, 6.8) node[midway, align=center] {\textbf{\footnotesize Execute}\\[-2pt]\tiny (EX)};
-    \draw[thick, fill=white] (6.8, 5.6) rectangle (8.4, 6.8) node[midway, align=center] {\textbf{\footnotesize Memory}\\[-2pt]\tiny (MEM)};
-    \draw[thick, fill=white] (9.0, 5.6) rectangle (10.8, 6.8) node[midway, align=center] {\textbf{\footnotesize Writeback}\\[-2pt]\tiny (WB)};
+    \draw[thick, fill=white] (0.2, 6.4) rectangle (1.8, 7.7) node[midway, align=center] {\textbf{\footnotesize Fetch}\\[-2pt]\tiny (IF)};
+    \draw[thick, fill=white] (2.4, 6.4) rectangle (4.0, 7.7) node[midway, align=center] {\textbf{\footnotesize Decode}\\[-2pt]\tiny (ID)};
+    \draw[thick, fill=white] (4.6, 6.4) rectangle (6.2, 7.7) node[midway, align=center] {\textbf{\footnotesize Execute}\\[-2pt]\tiny (EX)};
+    \draw[thick, fill=white] (6.8, 6.4) rectangle (8.4, 7.7) node[midway, align=center] {\textbf{\footnotesize Memory}\\[-2pt]\tiny (MEM)};
+    \draw[thick, fill=white] (9.0, 6.4) rectangle (10.8, 7.7) node[midway, align=center] {\textbf{\footnotesize Writeback}\\[-2pt]\tiny (WB)};
     
-    \draw[->, thick] (1.8, 6.2) -- (2.4, 6.2);
-    \draw[->, thick] (4.0, 6.2) -- (4.6, 6.2);
-    \draw[->, thick] (6.2, 6.2) -- (6.8, 6.2);
-    \draw[->, thick] (8.4, 6.2) -- (9.0, 6.2);
+    \draw[->, thick] (1.8, 7.05) -- (2.4, 7.05);
+    \draw[->, thick] (4.0, 7.05) -- (4.6, 7.05);
+    \draw[->, thick] (6.2, 7.05) -- (6.8, 7.05);
+    \draw[->, thick] (8.4, 7.05) -- (9.0, 7.05);
 
     % 2. NIVEL L1 (Cachés Independientes - Visión Harvard)
-    \draw[thick, fill=green!10, rounded corners=2mm] (0.0, 2.5) rectangle (3.2, 4.0);
-    \node[align=center] at (1.6, 3.25) {\textbf{\small I-Cache L1}\\[-2pt]\tiny Mapeo Directo};
+    \draw[thick, fill=green!10, rounded corners=2mm] (0.0, 2.5) rectangle (3.2, 4.2);
+    \node[align=center] at (1.6, 3.35) {\textbf{\small I-Cache L1}\\[-2pt]\tiny Mapeo Directo};
 
-    \draw[thick, fill=orange!10, rounded corners=2mm] (5.2, 2.5) rectangle (8.4, 4.0);
-    \node[align=center] at (6.8, 3.25) {\textbf{\small D-Cache L1 (4KB)}\\[-2pt]\tiny Mapeo Directo};
+    \draw[thick, fill=orange!10, rounded corners=2mm] (5.2, 2.5) rectangle (8.4, 4.2);
+    \node[align=center] at (6.8, 3.35) {\textbf{\small D-Cache L1 (4KB)}\\[-2pt]\tiny Mapeo Directo};
 
-    \draw[thick, fill=red!10, rounded corners=1mm] (8.7, 2.5) rectangle (11.0, 4.0);
-    \node[align=center] at (9.85, 3.25) {\textbf{\small Write Buffer}\\[-2pt]\tiny FIFO (2 ent.)};
+    \draw[thick, fill=red!10, rounded corners=1mm] (8.7, 2.5) rectangle (11.0, 4.2);
+    \node[align=center] at (9.85, 3.35) {\textbf{\small Write Buffer}\\[-2pt]\tiny FIFO (2 ent.)};
 
     % Conexiones CPU <-> L1
-    \draw[<->, very thick, green!60!black] (1.0, 5.6) -- (1.0, 4.0)
-      node[midway, left=7mm, fill=white, inner sep=1pt] {\tiny Instrucciones};
-    \draw[<->, very thick, orange!80!black] (7.6, 5.6) -- (7.6, 4.0)
-      node[midway, right=7mm, fill=white, inner sep=1pt] {\tiny Lecturas (LW)};
-    \draw[->, very thick, red!80!black] (8.1, 5.6) -- (8.1, 4.25) -- (9.85, 4.25) -- (9.85, 4.0)
-      node[midway, above, yshift=3mm, xshift=3mm, fill=white, inner sep=1pt] {\tiny Escrituras (SW)};
+    % Instrucciones (x=1.0)
+    \draw[<->, very thick, green!60!black] (1.0, 6.4) -- (1.0, 4.2)
+      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Instrucciones};
+
+    % Lecturas (LW) (x=7.2)
+    \draw[<->, very thick, orange!80!black] (7.2, 6.4) -- (7.2, 4.2)
+      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Lecturas (LW)};
+
+    % Escrituras (SW)
+    \draw[->, very thick, red!80!black] (8.0, 6.4) -- (8.0, 4.8) -- (9.85, 4.8) -- (9.85, 4.2)
+      node[midway, right=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Escrituras (SW)};
 
     % Cable FENCE.I (Coherencia WB -> I-Cache)
-    \draw[->, dashed, thick, purple] (9.9, 5.6) -- (9.9, 4.88) -- (2.0, 4.88) -- (2.0, 4.0)
-      node[pos=0.48, above=5pt, fill=white, inner sep=1pt] {\tiny \textbf{Cable Invalidación Global FENCE.I}};
+    \draw[->, dashed, thick, purple] (9.9, 6.4) -- (9.9, 5.65) -- (2.0, 5.65) -- (2.0, 4.2)
+      node[midway, right=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny \textbf{Cable Invalidación Global FENCE.I}};
 
     % 3. ENRUTADOR MMIO Y ÁRBITRO DE BUS (Visión Von Neumann Unificada)
-    \draw[thick, fill=purple!10, rounded corners=2mm] (0.0, 0.4) rectangle (7.0, 1.4);
-    \node at (3.5, 0.9) {\textbf{\small Árbitro de Bus Wishbone \& Router MMIO}};
+    \draw[thick, fill=purple!10, rounded corners=2mm] (0.0, 0.2) rectangle (7.0, 1.2);
+    \node at (3.5, 0.7) {\textbf{\small Árbitro de Bus Wishbone \& Router MMIO}};
 
     % Conexiones L1 -> Árbitro
-    \draw[<->, thick, green!60!black] (1.6, 2.5) -- (1.6, 1.4)
-      node[midway, left=6mm, fill=white, inner sep=1pt] {\tiny Miss I-Cache};
-    \draw[<->, thick, orange!80!black] (6.0, 2.5) -- (6.0, 1.4)
-      node[midway, left=6mm, fill=white, inner sep=1pt] {\tiny Miss D-Cache};
-    \draw[->, thick, red!80!black] (9.85, 2.5) -- (9.85, 1.82) -- (7.65, 1.82) -- (7.0, 1.4)
-      node[pos=0.58, below=5pt, xshift=3mm, fill=white, inner sep=1pt] {\tiny Drenaje Buffer};
+    \draw[<->, thick, green!60!black] (1.6, 2.5) -- (1.6, 1.2)
+      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Miss I-Cache};
+    \draw[<->, thick, orange!80!black] (6.0, 2.5) -- (6.0, 1.2)
+      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Miss D-Cache};
+    \draw[->, thick, red!80!black] (9.85, 2.5) -- (9.85, 1.7) -- (7.0, 1.2)
+      node[midway, right=9mm, fill=white, inner sep=1.0pt, rounded corners=1pt] {\tiny Drenaje Buffer};
 
     % 4. MEMORIA PRINCIPAL Y PERIFÉRICOS
-    \draw[thick, fill=gray!20, rounded corners=2mm] (0.0, -1.5) rectangle (3.8, -0.5);
-    \node[align=center] at (1.9, -1.0) {\textbf{\small RAM Principal (BRAM)}\\[-2pt]\tiny Espacio Unificado};
+    \draw[thick, fill=gray!20, rounded corners=2mm] (0.0, -1.8) rectangle (3.8, -0.6);
+    \node[align=center] at (1.9, -1.2) {\textbf{\small RAM Principal (BRAM)}\\[-2pt]\tiny Espacio Unificado};
 
-    \draw[thick, fill=yellow!20, rounded corners=2mm] (4.8, -1.5) rectangle (9.5, -0.5);
-    \node[align=center] at (7.15, -1.0) {\textbf{\small Periféricos MMIO}\\[-2pt]\tiny UART, HPCs, LEDs};
+    \draw[thick, fill=yellow!20, rounded corners=2mm] (4.8, -1.8) rectangle (9.5, -0.6);
+    \node[align=center] at (7.15, -1.2) {\textbf{\small Periféricos MMIO}\\[-2pt]\tiny UART, HPCs, LEDs};
 
     % Conexiones Árbitro -> Memoria/MMIO
-    \draw[<->, very thick, blue!80!black] (1.9, 0.4) -- (1.9, -0.5)
-      node[midway, left=7mm, fill=white, inner sep=1pt] {\tiny Bus Wishbone};
-    \draw[<->, very thick, purple!80!black] (5.5, 0.4) -- (5.5, -0.5)
-      node[midway, right=7mm, fill=white, inner sep=1pt] {\tiny Acceso Directo Periféricos};
+    \draw[<->, very thick, blue!80!black] (1.9, 0.2) -- (1.9, -0.6)
+      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Bus Wishbone};
+    \draw[<->, very thick, purple!80!black] (5.5, 0.2) -- (5.5, -0.6)
+      node[midway, right=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Acceso Directo Periféricos};
 
 \end{tikzpicture}
 \caption{Esquema microarquitectónico de la Jerarquía de Memoria L1 en Arquitectura Harvard Modificada con invalidación \texttt{FENCE.I} y Write Buffer.}
