@@ -327,9 +327,44 @@ UART incrementa el recuento total de instrucciones ejecutadas. En nuestro harnes
 distorsiones en los resultados.
 
 \subsection{Especulación de Control (BHT y JAL Bypass)}
-Nuestro diseño se basa en un procesador basico segmentando de 5 etapas, donde la condicion de las sentencias condicionales, tanto bucles como ifs, no se conoce hasta la etapa de ejecución.
+Nuestro diseño se basa en un procesador basico segmentado de 5 etapas, donde la condicion de las sentencias condicionales, tanto bucles como ifs, no se conoce hasta la etapa de ejecución.
 Ademas de base, seguimos una politica de prediccion estatica "Predict Not-Taken", lo que significa que cada vez que se encuentra un salto condicional, el procesador asume que no se va a tomar 
-y continua con la siguiente instrucción. Por tanto en los casos donde esta asuncion sea incorrecta , se producirá un \textit{flush} de la segmentación y una penalización de 2 ciclos por cada salto tomado.
+y continua con la siguiente instrucción. Por tanto en los casos donde esta asuncion sea incorrecta , se producirá un \textit{flush} de la segmentación y una penalización de 2 ciclos por cada 
+salto tomado.
+
+\subsubsection{Predictor Dinámico Bimodal mediante BHT}
+Para mitigar este impacto, implementamos un predictor dinámico de saltos basado en una \textbf{Branch History Table (BHT)}. La BHT actúa como una memoria interna indexada por los bits 
+inferiores de la dirección del Contador de Programa (\textit{PC}). En lugar de asumir un comportamiento fijo, la tabla almacena el historial reciente de cada instrucción de salto utilizando 
+un contador de 2 bits con cuatro estados posibles:
+
+\begin{itemize}
+    \item \texttt{00} (\textit{Strongly Not-Taken}): Predice que el salto NO se tomará.
+    \item \texttt{01} (\textit{Weakly Not-Taken}): Predice que el salto NO se tomará.
+    \item \texttt{10} (\textit{Weakly Taken}): Predice que el salto SÍ se tomará.
+    \item \texttt{11} (\textit{Strongly Taken}): Predice que el salto SÍ se tomará.
+\end{itemize}
+
+La clave técnica de emplear 2 bits frente a un predictor de 1 bit radica en la \textbf{histéresis}. En un bucle que se repite muchas veces, la última iteración siempre fallará (ya que el 
+bucle termina y el salto no se toma). Un predictor de 1 bit cambiaría su estado inmediatamente a "No Tomado", fallando de nuevo en la primera iteración de la siguiente ejecución del bucle. 
+El contador saturante de 2 bits amortigua este fallo puntual degradando el estado de \textit{Strongly Taken} a \textit{Weakly Taken}, manteniendo la predicción correcta para futuras ejecuciones.
+
+El funcionamiento en la ruta de datos es síncrono y distribuido:
+\begin{enumerate}
+    \item \textbf{Etapa de Fetch (IF):} Se consulta la BHT con el PC actual. Si el contador indica que el salto debe tomarse (\texttt{1X}), el procesador redirige inmediatamente el PC hacia 
+    la dirección de destino del salto en el siguiente ciclo.
+    \item \textbf{Etapa de Execute (EX):} La ALU resuelve la condición real del salto. Si la predicción fue correcta, la ejecución continúa a latencia cero. Si hubo un error de especulación 
+    (\textit{mispredict}), la etapa de Execute emite una purga (\textit{flush}) para vaciar las dos instrucciones erróneas cargadas en la tubería, redirige el PC al camino correcto y 
+    actualiza el contador de la BHT.
+\end{enumerate}
+
+\subsubsection{Aceleración Transparente mediante JAL Bypass}
+Además de los saltos condicionales, el análisis de nuestras cargas de trabajo reveló una sobrecarga apreciable en instrucciones de salto incondicional (\texttt{JAL} - \textit{Jump and Link}). 
+Al no contar el núcleo con la extensión de multiplicación por hardware (RV32M), el compilador emite constantes llamadas a la subrutina del sistema \texttt{\_\_mulsi3} para emular 
+multiplicaciones por software.
+
+Debido a que una instrucción \texttt{JAL} se toma siempre con un 100\% de certeza, resultaba ineficiente pagar penalizaciones de ciclo esperando a que la instrucción avanzara por la 
+segmentación. Para resolver esto, inyectamos un decodificador parcial en la propia etapa de \textit{Fetch}. Al detectar el código de operación de un \texttt{JAL}, la etapa de 
+\textit{Fetch} calcula la dirección de destino inmediatamente en el mismo ciclo, realizando un \textbf{JAL Bypass} que redirige el PC \textbf{a coste de 0 ciclos de parada o purga}.
 
 \section{Referencias}
 
