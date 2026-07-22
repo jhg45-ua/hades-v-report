@@ -28,6 +28,10 @@
 \usepackage{array}
 \newcolumntype{L}{>{\raggedright\arraybackslash}X} % Columna X alineada a la izquierda
 
+% Diagramas
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows, positioning, calc}
+
 
 % ============================================================
 % CONFIGURACIONES BÁSICAS
@@ -357,6 +361,99 @@ El funcionamiento en la ruta de datos es síncrono y distribuido:
     actualiza el contador de la BHT.
 \end{enumerate}
 
+\shorthandoff{<>} % Previene conflictos si usas babel spanish
+\begin{figure}[H]
+\centering
+\begin{subfigure}[b]{0.52\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.82, every node/.style={transform shape}]
+    % 1. Registro PC (32 bits)
+    \draw[thick] (0,4.6) rectangle (7.5,5.3);
+    \draw[thick] (2.2,4.6) -- (2.2,5.3);
+    \draw[thick] (6.0,4.6) -- (6.0,5.3);
+    
+    \node at (1.1,4.95) {\tiny PC[31:12]};
+    \node at (4.1,4.95) {\textbf{\small PC[11:2]}};
+    \node at (6.75,4.95) {\tiny PC[1:0]};
+    
+    \node[above] at (1.1,5.3) {\tiny Ignorados};
+    \node[above, color=blue!80!black] at (4.1,5.3) {\textbf{\tiny ÍNDICE BHT (10 bits)}};
+    \node[above] at (6.75,5.3) {\tiny \texttt{2'b00}};
+
+    % Flecha del Índice hacia la tabla
+    \draw[->,very thick,blue!80!black] (2.7,4.6) -- (2.7,3.4) node[midway,right] {\tiny Selecciona Fila};
+
+    % 2. Tabla BHT (2 Columnas Explícitas)
+    % Cabecera de la tabla
+    \draw[thick, fill=gray!25] (1.2,3.0) rectangle (6.8,3.4);
+    \node at (2.7,3.2) {\textbf{\tiny Entrada / Índice}};
+    \node at (5.4,3.2) {\textbf{\tiny Estado (2 bits)}};
+    \draw[thick] (4.1,3.0) -- (4.1,3.4);
+
+    % Cuerpo de la Tabla
+    \draw[thick, fill=gray!5] (1.2,0.2) rectangle (6.8,3.0);
+    \draw[thick] (4.1,0.2) -- (4.1,3.0); % Divisoria de columnas
+
+    % Filas de la BHT
+    \draw (1.2,2.5) -- (6.8,2.5);
+    \node at (2.65,2.75) {\tiny \texttt{0x000} (Entrada 0)};
+    \node at (5.45,2.75) {\tiny \texttt{01} (Weakly NT)};
+
+    \draw (1.2,2.0) -- (6.8,2.0);
+    \node at (2.65,2.25) {\tiny \texttt{0x001} (Entrada 1)};
+    \node at (5.45,2.25) {\tiny \texttt{11} (Strongly T)};
+
+    \node at (2.65,1.7) {\tiny \dots};
+    \node at (5.45,1.7) {\tiny \dots};
+
+    % Fila Seleccionada (Highlighted)
+    \draw[fill=blue!15, thick] (1.2,1.0) rectangle (6.8,1.4);
+    \draw[thick] (4.1,1.0) -- (4.1,1.4);
+    \node at (2.65,1.2) {\textbf{\tiny Índice PC[11:2]}};
+    \node at (5.45,1.2) {\textbf{\tiny \texttt{10} (Weakly T)}};
+
+    \node at (2.65,0.7) {\tiny \dots};
+    \node at (5.45,0.7) {\tiny \dots};
+
+    \draw (1.2,0.6) -- (6.8,0.6);
+    \node at (2.65,0.4) {\tiny \texttt{0x3FF} (Entrada 1023)};
+    \node at (5.45,0.4) {\tiny \texttt{00} (Strongly NT)};
+
+    % Salida de Predicción desde la celda de Estado
+    \draw[->,very thick,red!80!black] (6.8,1.2) -- (8.0,1.2) node[right, align=left] {\textbf{\tiny Predicción}\\[-2pt]\tiny (MSB = 1 $\rightarrow$ Taken)};
+\end{tikzpicture}
+\caption{Indexación y lectura en dos columnas de la BHT.}
+\label{fig:bht_index}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.45\textwidth}
+\centering
+\begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=1.65cm,
+  thick,main node/.style={circle,draw,align=center,font=\sffamily\tiny\bfseries,minimum size=1.0cm}]
+
+  \node[main node, fill=red!15] (00) {\texttt{00}\\[-2pt]\tiny SNT};
+  \node[main node, fill=orange!20] (01) [right of=00] {\texttt{01}\\[-2pt]\tiny WNT};
+  \node[main node, fill=yellow!20] (10) [right of=01] {\texttt{10}\\[-2pt]\tiny WT};
+  \node[main node, fill=green!20] (11) [right of=10] {\texttt{11}\\[-2pt]\tiny ST};
+
+  \path[every node/.style={font=\sffamily\tiny}]
+    (00) edge[loop left] node{NT} (00)
+         edge[bend left] node{T} (01)
+    (01) edge[bend left] node{NT} (00)
+         edge[bend left] node{T} (10)
+    (10) edge[bend left] node{NT} (01)
+         edge[bend left] node{T} (11)
+    (11) edge[bend left] node{NT} (10)
+         edge[loop right] node{T} (11);
+\end{tikzpicture}
+\caption{Transiciones del contador saturante de 2 bits.}
+\label{fig:bht_fsm}
+\end{subfigure}
+\caption{Estructura interna de la tabla BHT y autómata de estados del predictor.}
+\label{fig:bht_complete_diagram}
+\end{figure}
+\shorthandon{<>}
+
 \subsubsection{Aceleración Transparente mediante JAL Bypass}
 Además de los saltos condicionales, el análisis de nuestras cargas de trabajo reveló una sobrecarga apreciable en instrucciones de salto incondicional (\texttt{JAL} - \textit{Jump and Link}). 
 Al no contar el núcleo con la extensión de multiplicación por hardware (RV32M), el compilador emite constantes llamadas a la subrutina del sistema \texttt{\_\_mulsi3} para emular 
@@ -365,6 +462,43 @@ multiplicaciones por software.
 Debido a que una instrucción \texttt{JAL} se toma siempre con un 100\% de certeza, resultaba ineficiente pagar penalizaciones de ciclo esperando a que la instrucción avanzara por la 
 segmentación. Para resolver esto, inyectamos un decodificador parcial en la propia etapa de \textit{Fetch}. Al detectar el código de operación de un \texttt{JAL}, la etapa de 
 \textit{Fetch} calcula la dirección de destino inmediatamente en el mismo ciclo, realizando un \textbf{JAL Bypass} que redirige el PC \textbf{a coste de 0 ciclos de parada o purga}.
+
+\subsection{Jerarquía de Memoria L1 Harvard Modificada y Coherencia}
+
+\subsubsection{Arquitectura Harvard Modificada y Cachés de Mapeo Directo}
+Para mitigar el «Muro de la Memoria», el procesador evoluciona desde su interfaz bus único original hacia una **Arquitectura Harvard Modificada** en el nivel L1. El subsistema separa 
+físicamente la búsqueda de instrucciones de los accesos a datos mediante dos cachés independientes de mapeo directo (\textit{Direct-Mapped}):
+
+\begin{itemize}
+    \item \textbf{Caché L1 de Instrucciones (I-Cache):} Diseñada para entregar instrucciones a la etapa de \textit{Fetch} a latencia cero (0 ciclos de penalización en caso de 
+    acierto o \textit{Hit}).
+    \item \textbf{Caché L1 de Datos (D-Cache):} Gestiona los accesos de lectura (\texttt{LW}) y escritura (\texttt{SW}) de la etapa de \textit{Memory}.
+\end{itemize}
+
+Ambas memorias emplean una geometría basada en líneas de ráfaga de 4 palabras (16 bytes). Esta decisión se justifica en el principio de \textbf{localidad espacial}: tras un fallo 
+de caché (\textit{Miss}), el hardware trae del bus un bloque contiguo de 4 palabras, garantizando que los accesos a instrucciones y datos adyacentes se resuelvan inmediatamente a 
+latencia cero. Las peticiones concurrentes de ambas cachés hacia la RAM son arbitradas de forma transparente mediante un módulo **Árbitro Wishbone**.
+
+\subsubsection{Write Buffer Asíncrono (Política Fire \& Forget) y Enrutamiento MMIO}
+Las operaciones de escritura en memoria (\texttt{STORE}) representan habitualmente un cuello de botella estructural en procesadores escalares. Para evitar que la CPU permanezca 
+congelada esperanzada en la confirmación del bus Wishbone, interpusimos un **Write Buffer** (cola FIFO asíncrona de 2 entradas) a la salida de la D-Cache.
+
+Bajo la política de diseño \textit{"Fire \& Forget"}, cuando la CPU ejecuta una instrucción \texttt{SW}, deposita la dirección y el dato en el Write Buffer y confirma 
+la ejecución a la segmentación en **0 ciclos de parada**. Una FSM secundaria en el buffer se encarga de negociar y volcar el dato a la RAM en segundo plano. Únicamente si el 
+buffer se llena por una ráfaga sostenida de escrituras, el sistema levantará una señal de parada (\textit{stall}) hacia la CPU.
+
+Por otra parte, para evitar la corrupción de datos, el subsistema incorpora un **Enrutador MMIO** (\textit{Memory-Mapped I/O}). Al detectar direcciones fuera del rango de la 
+memoria RAM principal (como registros UART, contadores HPCs o E/S general), el enrutador desvía la transacción directamente hacia los periféricos, omitiendo el paso por la caché de datos.
+
+\subsubsection{Coherencia de Instrucciones mediante la Instrucción FENCE.I}
+La separación en arquitectura Harvard introduce un reto crítico de coherencia de memoria conocido como la problemática del "código zombie". Cuando el procesador utiliza e
+l Bootloader para cargar un nuevo binario de usuario a través del puerto serie UART, la CPU escribe las nuevas instrucciones tratando la memoria como datos (vía D-Cache / Write Buffer). 
+Sin embargo, la I-Cache retiene en sus líneas las instrucciones del programa que se ejecutó anteriormente.
+
+Sin un mecanismo de sincronización, la etapa de \textit{Fetch} continuaría leyendo el código antiguo residente en la I-Cache. Para resolver esto de forma elegante y conforme al 
+estándar RISC-V, diseñamos un cable de invalidación global por hardware. Cuando la CPU ejecuta la instrucción \textbf{\texttt{FENCE.I}}, la etapa de \textit{Writeback} emite un 
+pulso de purga que pone a cero todos los bits de validez (\textit{valid bits}) de la I-Cache en un solo ciclo, forzando la recarga limpia de las nuevas instrucciones desde la 
+RAM principal.
 
 \section{Referencias}
 
