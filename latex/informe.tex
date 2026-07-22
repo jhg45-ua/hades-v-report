@@ -326,6 +326,11 @@ UART incrementa el recuento total de instrucciones ejecutadas. En nuestro harnes
 \textbf{11 instrucciones \texttt{csrr}} al término del programa. Al conocer con precisión matemática esta constante, es posible aislar el trabajo neto del algoritmo evaluado sin introducir 
 distorsiones en los resultados.
 
+\subsection{Especulación de Control (BHT y JAL Bypass)}
+Nuestro diseño se basa en un procesador basico segmentando de 5 etapas, donde la condicion de las sentencias condicionales, tanto bucles como ifs, no se conoce hasta la etapa de ejecución.
+Ademas de base, seguimos una politica de prediccion estatica "Predict Not-Taken", lo que significa que cada vez que se encuentra un salto condicional, el procesador asume que no se va a tomar 
+y continua con la siguiente instrucción. Por tanto en los casos donde esta asuncion sea incorrecta , se producirá un \textit{flush} de la segmentación y una penalización de 2 ciclos por cada salto tomado.
+
 \section{Referencias}
 
 \end{document}
