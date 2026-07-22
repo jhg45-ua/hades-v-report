@@ -292,6 +292,40 @@ trabajo compuesto por:
 Si bien estaba planteada para poder ser ejecutada sobre placas FPGA Basys 3, nosotros conseguimos que la Universidad de Alicante nos cediera una placa de desarrollo 
 \textbf{Digilent Nexys A7-100T} con un chip \textbf{Xilinx Artix-7 XC7A100T-1CSG324C}, que nos permitió ejecutar el procesador a una frecuencia de reloj de 100 MHz.
 
+\section{Diseño Microarquitectónico e Innovaciones}
+
+\subsection{Telemetría en Hardware: Performance Counters (HPCs)}
+Antes de integrar cualquier caracteristica nueva como el predictor de saltos o memorias cache, necesiamos una manera de saber de forma determinista y exacta que ocurre 
+dentro del nucleo sin alterar el comportamiento o reducir el rendimiento del que se parte.
+
+En un entorno de simulacion como Verilator o sobre la FPGA, medir unicamente el tiempo de ejecucion resulta insuficiente para justificar decisiones de diseño. Es indispensable 
+disponer de un "termometro de silicio" interno capaz de diferenciar los ciclos de la CPU en los utiles para el computo, perdidos por paradas de memoria (\textit{stalls}) y ciclos 
+desaprovechados por especulación errónea (\textit{flushes}).
+
+Por ello, la primera gran mejora introducida sobre el núcleo base HaDes-V fue un subsistema de \textbf{Contadores de Rendimiento de Hardware} (\textit{Hardware Performance Counters} - HPCs).
+
+Los HPCs se ubicaron estratégicamente en la \textbf{última etapa de la segmentación: Writeback (WB)}. En esta etapa, las instrucciones ya han sido resueltas y confirmadas de forma 
+inmutable. La instrumentación en WB procesa exclusivamente señales registradas, desacoplando la lógica de telemetría de los multiplexores críticos de direccionamiento de las etapas previas.
+
+El subsistema monitoriza en tiempo real las siguientes métricas:
+\begin{itemize}
+    \item \textbf{\texttt{CYCLE}:} Recuento total de ciclos de reloj transcurridos.
+    \item \textbf{\texttt{INSTRUCTION}:} Número de instrucciones efectivamente retiradas (\textit{retired instructions}).
+    \item \textbf{\texttt{STALL}:} Ciclos en los que la ruta de datos permanece congelada por latencia del bus o dependencias.
+    \item \textbf{\texttt{FLUSH}:} Ocurrencias de purga en la tubería por saltos mal predichos.
+    \item \textbf{\texttt{BRANCH} / \texttt{MISPREDICT}:} Evaluación de instrucciones de salto condicional y recuento de errores de especulación.
+\end{itemize}
+
+\subsubsection{Interfaz de Software mediante CSRs y Control del Efecto Observador}
+Para que el software ejecutado por el procesador pueda leer estas métricas sin necesidad de sondas lógicas externas o analizadores de espectro, los contadores se mapearon en el espacio de 
+\textbf{Registros de Control y Estado} (\textit{CSRs}) estándar de la especificación RISC-V (\texttt{mhpmcounter3}, \texttt{mhpmcounter4}, etc.). El programa accede a ellos mediante la 
+instrucción ensamblador \texttt{csrr} (\textit{Control and Status Register Read}).
+
+Al volcar la telemetría al final de la ejecución de una carga de trabajo, surge el conocido \textit{Efecto Observador}: la propia rutina encargada de leer los contadores y enviarlos vía 
+UART incrementa el recuento total de instrucciones ejecutadas. En nuestro harness de evaluación, esta sobrecarga consiste en un bloque fijo y determinista de exactamente 
+\textbf{11 instrucciones \texttt{csrr}} al término del programa. Al conocer con precisión matemática esta constante, es posible aislar el trabajo neto del algoritmo evaluado sin introducir 
+distorsiones en los resultados.
+
 \section{Referencias}
 
 \end{document}
