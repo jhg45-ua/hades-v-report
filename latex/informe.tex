@@ -197,11 +197,51 @@
 
 \subsection{Presentación del Proyecto HaDes-V}
 El proyecto HaDes-V consiste en el diseño e implementación de un microcontrolador basado en la arquitectura de conjunto de instrucciones 
-(\textit{ISA}) de código abierto \textbf{RISC-V (RV32I)}. Basado en un nucleo escalar clásico de 5 etapas (\textit{Fetch}, \textit{Decode}, 
-\textit{Execute}, \textit{Memory}, \textit{Writeback}), el objetivo principal es aprender sobre el diseño de procesadores, acompañado de una
-evaluación cuantitativa que justifique la elección de ciertas decisiones de diseño, una vez implementado el diseño basico indicado, todo dentro
-del contexto de que se trata de un procesador para microcontroladores, con un enfoque en eficiencia energética y simplicidad de diseño.
+(\textit{ISA}) de código abierto \textbf{RISC-V (RV32I)}. Partiendo de un núcleo escalar clásico de 5 etapas (\textit{Fetch}, \textit{Decode}, 
+\textit{Execute}, \textit{Memory}, \textit{Writeback}), el objetivo principal del trabajo es profundizar en las técnicas de diseño de procesadores, 
+acompañado de una evaluación cuantitativa que justifique cada decisión microarquitectónica, una vez implementado el diseño basico indicado. 
+Todo dentro del contexto de que se trata de un procesador para microcontroladores, con un enfoque en eficiencia energética y simplicidad de diseño.
 
+\subsection{Motivación: Los Muros del Control y de la Memoria}
+En un procesador segmentado básico, el rendimiento teórico de una instrucción por ciclo (\textit{IPC} = 1) se ve seriamente penalizado por dos
+factores fundamentales:
+
+\begin{itemize}
+  \item \textbf{El Muro del Control:} cuando un procesador encuentra una instrucción de salto condicional (como un bucle o una sentencia \texttt{if}),
+  la dirección del siguiente bloque de instrucciones no se conoce hasta la etapa de ejecución normalmente, Esto obliga a purgar (\textit{flush}) la 
+  ruta segmentada, perdiendo ciclos valiosos. 
+  \item \textbf{El Muro de la Memoria:} La velocidad a la que se ejecutan las instrucciones supera enormemente en velocidad de respuesta a la memoria 
+  principal, generando paradas (\textit{stalls}) durante las operaciones de lectura y escritura.
+\end{itemize}
+
+Teniendo en cuenta que para cualquier programa, incluso si es algo pequeño como para aprender, nos encontraremos con estos muros, surge la necesidad de implementar
+medidas que por lo menos lo mitiguen lo maximo posible, en este caso especulacion del control con una Branch History Table (BHT) y una cache L1.
+
+\subsection{Resumen de Contribuciones y Resultados Clave}
+Para superar estas limitaciones, en este proyecto se presentan, integran y corroboran tres grandes mejoras microarquitectónicas sobre el núcleo base 
+HaDes-V que se nos hace implementar:
+
+\begin{itemize}
+  \item \textbf{Telemetría en Hardware (HPCs):} Si bien no tiene ningun efecto en el rendimiento propio del núcleo, es la herramienta indispensable para 
+  poder justificar las otras dos mejoras. Se trata de la inserción de contadores de rendimiento en la etapa de \textit{Writeback} para monitorizar en 
+  tiempo real métricas de IPC, ciclos, paradas y purgas sin alterar el camino crítico.
+  \item \textbf{Jerarquía de Memoria L1 Harvard Modificada:} Integración de cachés independientes de instrucciones (I-Cache) y datos (D-Cache) de mapeo directo, 
+  un \textit{Write Buffer} asíncrono para absorber ráfagas de escritura y soporte de coherencia mediante la instrucción \texttt{FENCE.I}. 
+  \item \textbf{Especulación de Control mediante BHT y JAL Bypass:} Implementación de una tabla de historial de saltos (\textit{Branch History Table}) bimodal 
+  de 2 bits y 1024 entradas (posteriormente de 4096 entradas), complementada con un mecanismo de aceleración rápida en la etapa de \textit{Fetch} para saltos 
+  incondicionales (\texttt{JAL}).
+\end{itemize}
+
+\begin{insightbox}{SÍNTESIS Y RENDIMIENTO FINAL}
+La integración conjunta de la BHT y la caché L1 permitió elevar el rendimiento práctico del procesador desde un IPC inicial de $\approx 0.50$ hasta valores de
+entre \textbf{0.83 y 0.95} en un conjunto de microbenchmarks. Asimismo, el diseño fue implementado con éxito en una FPGA Xilinx Artix-7 a \textbf{100 MHz} con un 
+margen temporal positivo (\textbf{WNS: +0.036 ns}).
+\end{insightbox}
+
+\subsection{Estructura de la Memoria}
+El resto de este documento se organiza de la siguiente manera: El Capítulo 2 detalla el contexto del proyecto dentro del \textit{Community Challenge with HaDes-V}. 
+El Capítulo 3 describe las decisiones de diseño microarquitectónico. El Capítulo 4 presenta un análisis \textit{post-mortem} de los retos de depuración. El Capítulo 5 
+evalúa cuantitativamente el rendimiento y la síntesis en FPGA. Finalmente, el Capítulo 6 expone las conclusiones y líneas de trabajo futuro.
 
 % Bibliografía en formato estándar
 \section{Referencias}
