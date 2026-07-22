@@ -75,7 +75,7 @@
   colback=orange!5!white,
   colframe=orange!75!black,
   fonttitle=\bfseries,
-  title={Lección de Silicio / Bug: #1},
+  title={Bug: #1},
   arc=2mm,
 }
 
@@ -84,7 +84,7 @@
   colback=blue!5!white,
   colframe=blue!75!black,
   fonttitle=\bfseries,
-  title={Métrica Clave / Resultado: #1},
+  title={Resultado: #1},
   arc=2mm,
 }
 
@@ -580,6 +580,103 @@ de la I-Cache, forzando a la etapa de \textit{Fetch} a recargar el código fresc
 \label{fig:modified_harvard_architecture}
 \end{figure}
 \shorthandon{<>}
+
+\section{Análisis Post-Mortem y Debugging}
+
+\subsection{Filosofía del Análisis Post-Mortem}
+En la ingeniería de procesadores, la diferencia entre un prototipo académico y un núcleo de grado industrial radica en la comprensión de los estados transitorios 
+de la ruta de datos. La integración de la especulación de control y la jerarquía de memoria L1 sobre un procesador segmentado expuso diversos problemas de sincronización, 
+no determinismo y discrepancias entre simuladores de software y silicio real. En este capítulo se detallan los siete fallos más críticos enfrentados y superados durante el 
+desarrollo de HaDes-V.
+
+\subsection{Depuración del Control e I-Cache (Canal de Instrucciones)}
+
+\begin{bugbox}{El Artefacto del Simulador y los 512 Flushes Fantasma}
+\textbf{Síntoma:} Al insertar la estructura base de la caché de instrucciones, la ejecución del benchmark \textit{Matrix Mult} registró un incremento injustificado de 
+exactamente 512 purgas (\textit{flushes}) en la BHT, a pesar de que el código binario no había sufrido cambios.
+
+\textbf{Causa:} El fallo no residía en el RTL de SystemVerilog. Al modificar la jerarquía de módulos, el simulador \textbf{Verilator} (compilado a C++) generó una semilla 
+de aleatorización distinta para los registros no inicializados explícitamente. Mientras que la FPGA Xilinx infiere un reseteo implícito a cero (\textit{Strongly Not-Taken}), 
+Verilator arrancó la mitad de las 1024 entradas ($2^9 = 512$) en el estado inverso (\textit{Strongly Taken}), provocando un patrón masivo de errores de especulación iniciales.
+
+\textbf{Lección:} El entorno de simulación por software no siempre replica el comportamiento de encendido (\textit{power-on reset}) del silicio físico. Es obligatorio incluir 
+rutinas explícitas de reseteo por hardware en estructuras de almacenamiento especulativo.
+\end{bugbox}
+
+\begin{bugbox}{Alineación y Direccionamiento (Byte Address vs. Word Address)}
+\textbf{Síntoma:} Durante el primer intento de integración de la I-Cache, el procesador entraba en un bucle infinito de fallos de caché (\textit{Simulation Timeout}), 
+produciendo trazas de simulación masivas y quedando colgado en la primera instrucción.
+
+\textbf{Causa:} Confusión entre el direccionamiento por bytes del procesador RISC-V y el direccionamiento por palabras de las memorias RAM internas. El PC del procesador se 
+incrementa de 4 en 4 bytes (\texttt{0x00, 0x04, 0x08, 0x0C}), por lo que los bits \texttt{PC[1:0]} valen siempre \texttt{2'b00}. Al extraer los campos de la dirección para la 
+caché, se utilizaron los bits sin desplazar para indexar las palabras de la ráfaga, provocando que la caché comparase etiquetas (\textit{tags}) desalineadas y nunca detectara 
+un acierto (\textit{Hit}).
+
+\textbf{Lección:} Se debe parametrizar y empaquetar la extracción de campos (\textit{Tag, Index, Offset}) mediante estructuras SystemVerilog unificadas (\texttt{struct packed}) 
+dentro de un paquete global (\texttt{cache\_pkg.sv}) para evitar desalineaciones manuales.
+\end{bugbox}
+
+\begin{bugbox}{Muestreo Combinacional y Retención con fetch\_base\_adr}
+\textbf{Síntoma:} En ejecuciones con saltos frecuentes, la I-Cache sobreescribía líneas de instrucciones válidas con direcciones corruptas (como \texttt{0x3FFFFFDE}), provocando 
+fallos fatales en el bus Wishbone.
+
+\textbf{Causa:} Cuando ocurría un fallo de caché (\textit{Miss}), la FSM tardaba varios ciclos en traer la ráfaga de 4 palabras desde la RAM. Mientras la CPU estaba congelada esperando 
+los datos, la etapa de \textit{Execute} resolvió un salto mal predicho y emitió un \textit{Flush}, cambiando instantáneamente los cables combinacionales del PC de entrada. Al terminar 
+de leer la RAM, la caché utilizó las señales combinacionales del \textit{nuevo} PC para guardar los datos del \textit{viejo} PC.
+
+\textbf{Lección:} Una memoria caché jamás debe confiar en los cables combinacionales de entrada de la CPU en el momento de escribir en sus memorias internas. Es obligatorio registrar 
+e inmovilizar la dirección base del fallo mediante un registro de retención inmutable (\texttt{fetch\_base\_adr}).
+\end{bugbox}
+
+\begin{bugbox}{Desfase de Fase en el Bus Wishbone (5 ACKs para 4 Palabras)}
+\textbf{Síntoma:} Las trazas de señales del bus Wishbone revelaron que la memoria RAM entregaba 5 datos para una ráfaga diseñada estrictamente para 4 palabras (16 bytes), pidiendo 
+la primera dirección dos veces seguidas.
+
+\textbf{Causa:} Las señales maestras del bus (\texttt{mem\_port.adr}) estaban asignadas dentro del bloque secuencial de la FSM (\texttt{always\_ff}). Al pasar del estado \texttt{FETCH\_W0} 
+a \texttt{FETCH\_W1}, la dirección física tardaba un ciclo de reloj adicional en actualizarse en las salidas, provocando que el esclavo Wishbone leyese la dirección antigua por segunda vez.
+
+\textbf{Lección:} En máquinas de estados maestras para buses de memoria, el estado de la FSM debe ser secuencial (\texttt{always\_ff}), pero las salidas registradas hacia el bus deben 
+gestionarse en un bloque combinacional separado (\texttt{always\_comb}) para eliminar latencias de registro no deseadas.
+\end{bugbox}
+
+\subsection{Depuración de la D-Cache, Write Buffer y Periféricos MMIO (Canal de Datos)}
+
+\begin{bugbox}{Ineficiencia por Thrashing de Capacidad en la D-Cache}
+\textbf{Síntoma:} Con un tamaño de D-Cache inicial de 256 Bytes, la ejecución de \textit{Bubble Sort} arrojaba exactamente el mismo número de ciclos en la pasada COLD (caché fría) 
+que en la pasada HOT (caché caliente), sin mostrar ganancia de rendimiento.
+
+\textbf{Causa:} El tamaño de la caché era insuficiente para albergar el vector de datos procesado por el algoritmo. Las iteraciones del bucle provocaban que los accesos a datos 
+expulsaran continuamente a las líneas recién cargadas (\textit{Thrashing} de capacidad), anulando el beneficio de la pasada caliente.
+
+\textbf{Lección:} Al escalar la D-Cache a \textbf{4 KB} (128 líneas de 16 bytes), la pasada HOT logró retener la totalidad de la estructura de datos en SRAM interna, reduciendo los 
+accesos al bus principal al mínimo técnico.
+\end{bugbox}
+
+\begin{bugbox}{Colisión de Bus Wishbone entre Write Buffer y MMIO}
+\textbf{Síntoma:} Al enviar cadenas de texto por la UART durante la ejecución de tareas intensivas en memoria, los caracteres impresos en la consola serie aparecían completamente 
+corrompidos.
+
+\textbf{Causa:} Se produjo un conflicto de bus cuando la CPU intentaba realizar un acceso de escritura a un periférico MMIO (\textit{Memory-Mapped I/O}) de forma síncrona en el mismo 
+ciclo en que el \textit{Write Buffer} estaba drenando un \texttt{STORE} previo hacia la memoria RAM en segundo plano. Ambas entidades compitieron por las señales \texttt{cyc} y \texttt{stb} 
+del bus Wishbone.
+
+\textbf{Lección:} Se reestructuró la FSM de datos añadiendo el estado estricto \texttt{MMIO\_ACCESS}. Cuando la CPU detecta una dirección de periférico, se fuerza una parada (\textit{stall}) 
+hasta que el \textit{Write Buffer} haya vaciado completamente sus entradas y el bus esté en absoluto silencio.
+\end{bugbox}
+
+\begin{bugbox}{Incoherencia de Código y Resolución del Bug del "Código Zombie"}
+\textbf{Síntoma:} Tras recibir un nuevo ejecutable \texttt{.hex} a través del Bootloader por puerto serie UART, el procesador saltaba a la dirección inicial del nuevo programa, 
+pero ejecutaba instrucciones obsoletas del programa anterior o entraba en trampa de excepción.
+
+\textbf{Causa:} Conflicto de coherencia en la arquitectura Harvard. El Bootloader escribió el nuevo programa en la RAM a través de la interfaz de datos (D-Cache / Write Buffer). 
+Sin embargo, la I-Cache mantenía almacenadas en sus líneas las instrucciones del ejecutable antiguo ("código zombie"), entregándolas a la etapa de \textit{Fetch} en lugar de leer 
+la RAM actualizada.
+
+\textbf{Lección:} Se implementó una línea de invalidación por hardware (\texttt{fence\_i\_flush\_out}). Al decodificar en \textit{Writeback} la instrucción \texttt{FENCE.I}, se 
+emite un pulso que borra de forma síncrona los bits de validez (\texttt{valid\_ram = 0}) de la I-Cache, forzando la recarga limpia de las nuevas instrucciones desde la RAM.
+\end{bugbox}
+
+
 
 \section{Referencias}
 
