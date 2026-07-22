@@ -193,7 +193,6 @@
 \setcounter{page}{1}
 
 % --- CAPÍTULOS DE HADES-V ---
-% --- CAPÍTULOS DE HADES-V ---
 \section{Resumen Ejecutivo e Introducción}
 
 \subsection{Presentación del Proyecto HaDes-V}
@@ -249,15 +248,15 @@ evalúa cuantitativamente el rendimiento y la síntesis en FPGA. Finalmente, el 
 \section{Contexto y Marco del Proyecto}
 
 \subsection{El Community Challenge with HaDes-V}
-Este proyecto se ha desarrollado en el marco del \textit{Community Challenge with HaDes-V}, promovido por la organizacion \textbf{RISC-V International} y organizado
+Este proyecto se ha desarrollado en el marco del \textit{Community Challenge with HaDes-V}, promovido por la organización \textbf{RISC-V International} y organizado
 por el grupo de Arquitecturas y Sistemas Empotrados de la \textbf{Universidad Tecnológica de Graz (TU Graz)}. La iniciativa busca fomentar el aprendizaje
-práctico en el diseño de procesadores de codigo abierto.
+práctico en el diseño de procesadores de código abierto.
 
-El reto proponia a los participantes implementar una base comun sobre un diseño de nucleo docente y, una vez completado, añadir cualquier tipo de mejora posible.
+El reto proponía a los participantes implementar primero una base comun sobre un diseño de nucleo docente y, una vez completado, añadir cualquier tipo de mejora posible.
 
 \subsection{Arquitectura de partida}
-El núcleo base utilizado es HaDes-V, una plataforma desarrollada para la docencia que implementa una arquitectura escalar de 32 bits conforme a la especificacion
-\textbf{RISC-V (RV32I)}, con un nivel de privilegio exclusivo de Modo Máquina (\textit{M-Mode}).
+El núcleo base utilizado es HaDes-V, una plataforma desarrollada para la docencia que implementa una arquitectura escalar de 32 bits conforme a la especificación
+estándar \textbf{RISC-V (RV32I)}, con un nivel de privilegio exclusivo de Modo Máquina (\textit{M-Mode}).
 
 El núcleo de partida organiza su ruta de datos en una segmentación clásica de 5 etapas:
 \begin{enumerate}
@@ -273,7 +272,7 @@ En su estado inicial, el procesador carece de predicción dinámica de saltos (u
 penalización fija de 2 ciclos por cada salto tomado) y realiza accesos directos a la memoria principal sin cachés intermedias ni buffers de escritura.
 
 \subsection{Entorno de Desarrollo y Flujo de Trabajo Hardware/Software}
-Para la realizacion del proyecto, tanto para la implementación, simulación y validación del núcleo, se proporciono ya en el repositorio oficial un flujo de
+Para la realización del proyecto, tanto para la implementación, simulación y validación del núcleo, se proporcionó ya en el repositorio oficial un flujo de
 trabajo compuesto por: 
 \begin{itemize}
     \item \textbf{Simulación de Ciclo Exacto:} Uso de \textbf{Verilator} para compilar el código SystemVerilog a un ejecutable C++, permitiendo realizar simulación 
@@ -285,7 +284,7 @@ trabajo compuesto por:
     serie UART.
 \end{itemize}
 
-Si bien estaba planteada para poder ser ejeuctada sobre placas FPGA Basys 3, nosotros conseguimos que la Universidad de Alicante nos cediera una placa de desarrollo 
+Si bien estaba planteada para poder ser ejecutada sobre placas FPGA Basys 3, nosotros conseguimos que la Universidad de Alicante nos cediera una placa de desarrollo 
 \textbf{Digilent Nexys A7-100T} con un chip \textbf{Xilinx Artix-7 XC7A100T-1CSG324C}, que nos permitió ejecutar el procesador a una frecuencia de reloj de 100 MHz.
 
 
