@@ -295,11 +295,11 @@ Si bien estaba planteada para poder ser ejecutada sobre placas FPGA Basys 3, nos
 \section{Diseño Microarquitectónico e Innovaciones}
 
 \subsection{Telemetría en Hardware: Performance Counters (HPCs)}
-Antes de integrar cualquier caracteristica nueva como el predictor de saltos o memorias cache, necesiamos una manera de saber de forma determinista y exacta que ocurre 
+Antes de integrar cualquier característica nueva como el predictor de saltos o memorias cache, necesitamos una manera de saber de forma determinista y exacta qué ocurre 
 dentro del nucleo sin alterar el comportamiento o reducir el rendimiento del que se parte.
 
-En un entorno de simulacion como Verilator o sobre la FPGA, medir unicamente el tiempo de ejecucion resulta insuficiente para justificar decisiones de diseño. Es indispensable 
-disponer de un "termometro de silicio" interno capaz de diferenciar los ciclos de la CPU en los utiles para el computo, perdidos por paradas de memoria (\textit{stalls}) y ciclos 
+En un entorno de simulación como Verilator o sobre la FPGA, medir únicamente el tiempo de ejecución resulta insuficiente para justificar decisiones de diseño. Es indispensable 
+disponer de un "termómetro de silicio" interno capaz de diferenciar los ciclos de la CPU en los utiles para el computo, perdidos por paradas de memoria (\textit{stalls}) y ciclos 
 desaprovechados por especulación errónea (\textit{flushes}).
 
 Por ello, la primera gran mejora introducida sobre el núcleo base HaDes-V fue un subsistema de \textbf{Contadores de Rendimiento de Hardware} (\textit{Hardware Performance Counters} - HPCs).
