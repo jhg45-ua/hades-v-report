@@ -28,6 +28,10 @@
 \usepackage{array}
 \newcolumntype{L}{>{\raggedright\arraybackslash}X} % Columna X alineada a la izquierda
 
+% Diagramas
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows, positioning, calc}
+
 
 % ============================================================
 % CONFIGURACIONES BÁSICAS
@@ -291,6 +295,291 @@ trabajo compuesto por:
 
 Si bien estaba planteada para poder ser ejecutada sobre placas FPGA Basys 3, nosotros conseguimos que la Universidad de Alicante nos cediera una placa de desarrollo 
 \textbf{Digilent Nexys A7-100T} con un chip \textbf{Xilinx Artix-7 XC7A100T-1CSG324C}, que nos permitió ejecutar el procesador a una frecuencia de reloj de 100 MHz.
+
+\section{Diseño Microarquitectónico e Innovaciones}
+
+\subsection{Telemetría en Hardware: Performance Counters (HPCs)}
+Antes de integrar cualquier característica nueva como el predictor de saltos o memorias cache, necesitamos una manera de saber de forma determinista y exacta qué ocurre 
+dentro del nucleo sin alterar el comportamiento o reducir el rendimiento del que se parte.
+
+En un entorno de simulación como Verilator o sobre la FPGA, medir únicamente el tiempo de ejecución resulta insuficiente para justificar decisiones de diseño. Es indispensable 
+disponer de un "termómetro de silicio" interno capaz de diferenciar los ciclos de la CPU en los utiles para el computo, perdidos por paradas de memoria (\textit{stalls}) y ciclos 
+desaprovechados por especulación errónea (\textit{flushes}).
+
+Por ello, la primera gran mejora introducida sobre el núcleo base HaDes-V fue un subsistema de \textbf{Contadores de Rendimiento de Hardware} (\textit{Hardware Performance Counters} - HPCs).
+
+Los HPCs se ubicaron estratégicamente en la \textbf{última etapa de la segmentación: Writeback (WB)}. En esta etapa, las instrucciones ya han sido resueltas y confirmadas de forma 
+inmutable. La instrumentación en WB procesa exclusivamente señales registradas, desacoplando la lógica de telemetría de los multiplexores críticos de direccionamiento de las etapas previas.
+
+El subsistema monitoriza en tiempo real las siguientes métricas:
+\begin{itemize}
+    \item \textbf{\texttt{CYCLE}:} Recuento total de ciclos de reloj transcurridos.
+    \item \textbf{\texttt{INSTRUCTION}:} Número de instrucciones efectivamente retiradas (\textit{retired instructions}).
+    \item \textbf{\texttt{STALL}:} Ciclos en los que la ruta de datos permanece congelada por latencia del bus o dependencias.
+    \item \textbf{\texttt{FLUSH}:} Ocurrencias de purga en la tubería por saltos mal predichos.
+    \item \textbf{\texttt{BRANCH} / \texttt{MISPREDICT}:} Evaluación de instrucciones de salto condicional y recuento de errores de especulación.
+\end{itemize}
+
+\subsubsection{Interfaz de Software mediante CSRs y Control del Efecto Observador}
+Para que el software ejecutado por el procesador pueda leer estas métricas sin necesidad de sondas lógicas externas o analizadores de espectro, los contadores se mapearon en el espacio de 
+\textbf{Registros de Control y Estado} (\textit{CSRs}) estándar de la especificación RISC-V (\texttt{mhpmcounter3}, \texttt{mhpmcounter4}, etc.). El programa accede a ellos mediante la 
+instrucción ensamblador \texttt{csrr} (\textit{Control and Status Register Read}).
+
+Al volcar la telemetría al final de la ejecución de una carga de trabajo, surge el conocido \textit{Efecto Observador}: la propia rutina encargada de leer los contadores y enviarlos vía 
+UART incrementa el recuento total de instrucciones ejecutadas. En nuestro harness de evaluación, esta sobrecarga consiste en un bloque fijo y determinista de exactamente 
+\textbf{11 instrucciones \texttt{csrr}} al término del programa. Al conocer con precisión matemática esta constante, es posible aislar el trabajo neto del algoritmo evaluado sin introducir 
+distorsiones en los resultados.
+
+\subsection{Especulación de Control (BHT y JAL Bypass)}
+Nuestro diseño se basa en un procesador basico segmentado de 5 etapas, donde la condicion de las sentencias condicionales, tanto bucles como ifs, no se conoce hasta la etapa de ejecución.
+Ademas de base, seguimos una politica de prediccion estatica "Predict Not-Taken", lo que significa que cada vez que se encuentra un salto condicional, el procesador asume que no se va a tomar 
+y continua con la siguiente instrucción. Por tanto en los casos donde esta asuncion sea incorrecta , se producirá un \textit{flush} de la segmentación y una penalización de 2 ciclos por cada 
+salto tomado.
+
+\subsubsection{Predictor Dinámico Bimodal mediante BHT}
+Para mitigar este impacto, implementamos un predictor dinámico de saltos basado en una \textbf{Branch History Table (BHT)}. La BHT actúa como una memoria interna indexada por los bits 
+inferiores de la dirección del Contador de Programa (\textit{PC}). En lugar de asumir un comportamiento fijo, la tabla almacena el historial reciente de cada instrucción de salto utilizando 
+un contador de 2 bits con cuatro estados posibles:
+
+\begin{itemize}
+    \item \texttt{00} (\textit{Strongly Not-Taken}): Predice que el salto NO se tomará.
+    \item \texttt{01} (\textit{Weakly Not-Taken}): Predice que el salto NO se tomará.
+    \item \texttt{10} (\textit{Weakly Taken}): Predice que el salto SÍ se tomará.
+    \item \texttt{11} (\textit{Strongly Taken}): Predice que el salto SÍ se tomará.
+\end{itemize}
+
+La clave técnica de emplear 2 bits frente a un predictor de 1 bit radica en la \textbf{histéresis}. En un bucle que se repite muchas veces, la última iteración siempre fallará (ya que el 
+bucle termina y el salto no se toma). Un predictor de 1 bit cambiaría su estado inmediatamente a "No Tomado", fallando de nuevo en la primera iteración de la siguiente ejecución del bucle. 
+El contador saturante de 2 bits amortigua este fallo puntual degradando el estado de \textit{Strongly Taken} a \textit{Weakly Taken}, manteniendo la predicción correcta para futuras ejecuciones.
+
+El funcionamiento en la ruta de datos es síncrono y distribuido:
+\begin{enumerate}
+    \item \textbf{Etapa de Fetch (IF):} Se consulta la BHT con el PC actual. Si el contador indica que el salto debe tomarse (\texttt{1X}), el procesador redirige inmediatamente el PC hacia 
+    la dirección de destino del salto en el siguiente ciclo.
+    \item \textbf{Etapa de Execute (EX):} La ALU resuelve la condición real del salto. Si la predicción fue correcta, la ejecución continúa a latencia cero. Si hubo un error de especulación 
+    (\textit{mispredict}), la etapa de Execute emite una purga (\textit{flush}) para vaciar las dos instrucciones erróneas cargadas en la tubería, redirige el PC al camino correcto y 
+    actualiza el contador de la BHT.
+\end{enumerate}
+
+\shorthandoff{<>} % Previene conflictos si usas babel spanish
+\begin{figure}[H]
+\centering
+\begin{subfigure}[b]{0.52\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.82, every node/.style={transform shape}]
+    % 1. Registro PC (32 bits)
+    \draw[thick] (0,4.6) rectangle (7.5,5.3);
+    \draw[thick] (2.2,4.6) -- (2.2,5.3);
+    \draw[thick] (6.0,4.6) -- (6.0,5.3);
+    
+    \node at (1.1,4.95) {\tiny PC[31:12]};
+    \node at (4.1,4.95) {\textbf{\small PC[11:2]}};
+    \node at (6.75,4.95) {\tiny PC[1:0]};
+    
+    \node[above] at (1.1,5.3) {\tiny Ignorados};
+    \node[above, color=blue!80!black] at (4.1,5.3) {\textbf{\tiny ÍNDICE BHT (10 bits)}};
+    \node[above] at (6.75,5.3) {\tiny \texttt{2'b00}};
+
+    % Flecha del Índice hacia la tabla
+    \draw[->,very thick,blue!80!black] (2.7,4.6) -- (2.7,3.4) node[midway,right] {\tiny Selecciona Fila};
+
+    % 2. Tabla BHT (2 Columnas Explícitas)
+    % Cabecera de la tabla
+    \draw[thick, fill=gray!25] (1.2,3.0) rectangle (6.8,3.4);
+    \node at (2.7,3.2) {\textbf{\tiny Entrada / Índice}};
+    \node at (5.4,3.2) {\textbf{\tiny Estado (2 bits)}};
+    \draw[thick] (4.1,3.0) -- (4.1,3.4);
+
+    % Cuerpo de la Tabla
+    \draw[thick, fill=gray!5] (1.2,0.2) rectangle (6.8,3.0);
+    \draw[thick] (4.1,0.2) -- (4.1,3.0); % Divisoria de columnas
+
+    % Filas de la BHT
+    \draw (1.2,2.5) -- (6.8,2.5);
+    \node at (2.65,2.75) {\tiny \texttt{0x000} (Entrada 0)};
+    \node at (5.45,2.75) {\tiny \texttt{01} (Weakly NT)};
+
+    \draw (1.2,2.0) -- (6.8,2.0);
+    \node at (2.65,2.25) {\tiny \texttt{0x001} (Entrada 1)};
+    \node at (5.45,2.25) {\tiny \texttt{11} (Strongly T)};
+
+    \node at (2.65,1.7) {\tiny \dots};
+    \node at (5.45,1.7) {\tiny \dots};
+
+    % Fila Seleccionada (Highlighted)
+    \draw[fill=blue!15, thick] (1.2,1.0) rectangle (6.8,1.4);
+    \draw[thick] (4.1,1.0) -- (4.1,1.4);
+    \node at (2.65,1.2) {\textbf{\tiny Índice PC[11:2]}};
+    \node at (5.45,1.2) {\textbf{\tiny \texttt{10} (Weakly T)}};
+
+    \node at (2.65,0.7) {\tiny \dots};
+    \node at (5.45,0.7) {\tiny \dots};
+
+    \draw (1.2,0.6) -- (6.8,0.6);
+    \node at (2.65,0.4) {\tiny \texttt{0x3FF} (Entrada 1023)};
+    \node at (5.45,0.4) {\tiny \texttt{00} (Strongly NT)};
+
+    % Salida de Predicción desde la celda de Estado
+    \draw[->,very thick,red!80!black] (6.8,1.2) -- (8.0,1.2) node[right, align=left] {\textbf{\tiny Predicción}\\[-2pt]\tiny (MSB = 1 $\rightarrow$ Taken)};
+\end{tikzpicture}
+\caption{Indexación y lectura en dos columnas de la BHT.}
+\label{fig:bht_index}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.45\textwidth}
+\centering
+\begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=1.65cm,
+  thick,main node/.style={circle,draw,align=center,font=\sffamily\tiny\bfseries,minimum size=1.0cm}]
+
+  \node[main node, fill=red!15] (00) {\texttt{00}\\[-2pt]\tiny SNT};
+  \node[main node, fill=orange!20] (01) [right of=00] {\texttt{01}\\[-2pt]\tiny WNT};
+  \node[main node, fill=yellow!20] (10) [right of=01] {\texttt{10}\\[-2pt]\tiny WT};
+  \node[main node, fill=green!20] (11) [right of=10] {\texttt{11}\\[-2pt]\tiny ST};
+
+  \path[every node/.style={font=\sffamily\tiny}]
+    (00) edge[loop left] node{NT} (00)
+         edge[bend left] node{T} (01)
+    (01) edge[bend left] node{NT} (00)
+         edge[bend left] node{T} (10)
+    (10) edge[bend left] node{NT} (01)
+         edge[bend left] node{T} (11)
+    (11) edge[bend left] node{NT} (10)
+         edge[loop right] node{T} (11);
+\end{tikzpicture}
+\caption{Transiciones del contador saturante de 2 bits.}
+\label{fig:bht_fsm}
+\end{subfigure}
+\caption{Estructura interna de la tabla BHT y autómata de estados del predictor.}
+\label{fig:bht_complete_diagram}
+\end{figure}
+\shorthandon{<>}
+
+\subsubsection{Aceleración Transparente mediante JAL Bypass}
+Además de los saltos condicionales, el análisis de nuestras cargas de trabajo reveló una sobrecarga apreciable en instrucciones de salto incondicional (\texttt{JAL} - \textit{Jump and Link}). 
+Al no contar el núcleo con la extensión de multiplicación por hardware (RV32M), el compilador emite constantes llamadas a la subrutina del sistema \texttt{\_\_mulsi3} para emular 
+multiplicaciones por software.
+
+Debido a que una instrucción \texttt{JAL} se toma siempre con un 100\% de certeza, resultaba ineficiente pagar penalizaciones de ciclo esperando a que la instrucción avanzara por la 
+segmentación. Para resolver esto, inyectamos un decodificador parcial en la propia etapa de \textit{Fetch}. Al detectar el código de operación de un \texttt{JAL}, la etapa de 
+\textit{Fetch} calcula la dirección de destino inmediatamente en el mismo ciclo, realizando un \textbf{JAL Bypass} que redirige el PC \textbf{a coste de 0 ciclos de parada o purga}.
+
+\subsection{Jerarquía de Memoria L1 Harvard Modificada y Coherencia}
+
+\subsubsection{Justificación Arquitectónica: De Von Neumann a Harvard Modificada}
+En un procesador segmentado de 5 etapas, la coexistencia de las etapas de \textit{Fetch} (búsqueda continua de instrucciones) y \textit{Memory} (lectura y escritura de operandos) 
+sobre un único bus de memoria de estructura \textbf{Von Neumann} genera un cuello de botella insostenible. Cada instrucción \texttt{LW} o \texttt{SW} competiría con la captura de 
+la siguiente instrucción, provocando paradas (\textit{stalls}) estructurales continuas.
+
+Para erradicar este conflicto sin renunciar a la flexibilidad de un espacio de direccionamiento unificado, en el procesador HaDes-V implementamos una \textbf{Arquitectura Harvard Modificada}
+en el nivel L1, cuya topología general se ilustra en la Figura \ref{fig:modified_harvard_architecture}.
+
+\subsubsection{Estructura del Subsistema L1 e Interconexión Wishbone}
+Como se observa en el diagrama, el nivel L1 desacopla completamente los accesos del núcleo mediante dos memorias caché independientes de mapeo directo (\textit{Direct-Mapped}):
+
+\begin{itemize}
+    \item \textbf{Caché L1 de Instrucciones (I-Cache):} Interconectada con la etapa de \textit{Fetch}, suministra instrucciones al procesador a latencia cero (0 ciclos de penalización 
+    en caso de acierto o \textit{Hit}).
+    \item \textbf{Caché L1 de Datos (D-Cache):} Con una capacidad de 4 KB, gestiona los accesos de lectura y escritura de la etapa de \textit{Memory} operando con direccionamiento a 
+    nivel de palabra (\textit{Word Address}).
+\end{itemize}
+
+Ambas memorias emplean líneas de ráfaga de 4 palabras (16 bytes) para explotar el principio de \textbf{localidad espacial}. Cuando ocurre un fallo de caché (\textit{Miss}), el módulo 
+**Árbitro Wishbone** (situado en la capa inferior de la Figura \ref{fig:modified_harvard_architecture}) gestiona la prioridad del bus, trayendo un bloque contiguo desde la RAM principal.
+
+\subsubsection{Write Buffer Asíncrono y Enrutamiento MMIO}
+Para mitigar la latencia en las operaciones de escritura (\texttt{STORE}), se interpuso un \textbf{Write Buffer} (cola FIFO asíncrona de 2 entradas) a la salida de la D-Cache. Bajo 
+la política de diseño \textit{"Fire \& Forget"}, cuando la CPU ejecuta una instrucción \texttt{SW}, deposita el dato en la FIFO y continúa su ejecución en **0 ciclos de parada**, mientras 
+el buffer drena los datos hacia la RAM en segundo plano.
+
+Asimismo, el sistema integra un **Enrutador MMIO** (\textit{Memory-Mapped I/O}). Como se detalla en la Figura \ref{fig:modified_harvard_architecture}, las direcciones destinadas a 
+periféricos (como los contadores HPCs, LEDs o la UART) son desviadas directamente evitando la caché de datos, previniendo la contaminación o corrupción de las líneas de caché.
+
+\subsubsection{Coherencia de Instrucciones mediante FENCE.I}
+La separación Harvard en L1 introduce el problema de coherencia del "código zombie": cuando el Bootloader recibe un nuevo ejecutable vía UART, escribe las nuevas instrucciones en la RAM 
+a través del bus de datos (D-Cache / Write Buffer). Sin embargo, la I-Cache retiene copias desactualizadas del programa anterior.
+
+Para resolver este conflicto, se diseñó un cable de invalidación por hardware (representado por la línea discontinua morada en la Figura \ref{fig:modified_harvard_architecture}). Al 
+ejecutar la instrucción estandarizada \textbf{\texttt{FENCE.I}}, la etapa de \textit{Writeback} emite un pulso que invalida de forma síncrona todos los bits de validez (\textit{valid bits}) 
+de la I-Cache, forzando a la etapa de \textit{Fetch} a recargar el código fresco desde la memoria RAM.
+
+\shorthandoff{<>}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=0.88, every node/.style={transform shape, font=\sffamily\small}]
+
+    % 1. BLOQUE DE LA CPU (Segmentación)
+    \draw[thick, fill=blue!5, rounded corners=3mm] (-0.5, 6.0) rectangle (11.5, 8.8);
+    \node[anchor=west, color=blue!80!black] at (0, 8.4) {\textbf{Núcleo Procesador HaDes-V (Pipeline de 5 Etapas)}};
+    
+    % Etapas internas
+    \draw[thick, fill=white] (0.2, 6.4) rectangle (1.8, 7.7) node[midway, align=center] {\textbf{\footnotesize Fetch}\\[-2pt]\tiny (IF)};
+    \draw[thick, fill=white] (2.4, 6.4) rectangle (4.0, 7.7) node[midway, align=center] {\textbf{\footnotesize Decode}\\[-2pt]\tiny (ID)};
+    \draw[thick, fill=white] (4.6, 6.4) rectangle (6.2, 7.7) node[midway, align=center] {\textbf{\footnotesize Execute}\\[-2pt]\tiny (EX)};
+    \draw[thick, fill=white] (6.8, 6.4) rectangle (8.4, 7.7) node[midway, align=center] {\textbf{\footnotesize Memory}\\[-2pt]\tiny (MEM)};
+    \draw[thick, fill=white] (9.0, 6.4) rectangle (10.8, 7.7) node[midway, align=center] {\textbf{\footnotesize Writeback}\\[-2pt]\tiny (WB)};
+    
+    \draw[->, thick] (1.8, 7.05) -- (2.4, 7.05);
+    \draw[->, thick] (4.0, 7.05) -- (4.6, 7.05);
+    \draw[->, thick] (6.2, 7.05) -- (6.8, 7.05);
+    \draw[->, thick] (8.4, 7.05) -- (9.0, 7.05);
+
+    % 2. NIVEL L1 (Cachés Independientes - Visión Harvard)
+    \draw[thick, fill=green!10, rounded corners=2mm] (0.0, 2.5) rectangle (3.2, 4.2);
+    \node[align=center] at (1.6, 3.35) {\textbf{\small I-Cache L1}\\[-2pt]\tiny Mapeo Directo};
+
+    \draw[thick, fill=orange!10, rounded corners=2mm] (5.2, 2.5) rectangle (8.4, 4.2);
+    \node[align=center] at (6.8, 3.35) {\textbf{\small D-Cache L1 (4KB)}\\[-2pt]\tiny Mapeo Directo};
+
+    \draw[thick, fill=red!10, rounded corners=1mm] (8.7, 2.5) rectangle (11.0, 4.2);
+    \node[align=center] at (9.85, 3.35) {\textbf{\small Write Buffer}\\[-2pt]\tiny FIFO (2 ent.)};
+
+    % Conexiones CPU <-> L1
+    % Instrucciones (x=1.0)
+    \draw[<->, very thick, green!60!black] (1.0, 6.4) -- (1.0, 4.2)
+      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Instrucciones};
+
+    % Lecturas (LW) (x=7.2)
+    \draw[<->, very thick, orange!80!black] (7.2, 6.4) -- (7.2, 4.2)
+      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Lecturas (LW)};
+
+    % Escrituras (SW)
+    \draw[->, very thick, red!80!black] (8.0, 6.4) -- (8.0, 4.8) -- (9.85, 4.8) -- (9.85, 4.2)
+      node[midway, right=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Escrituras (SW)};
+
+    % Cable FENCE.I (Coherencia WB -> I-Cache)
+    \draw[->, dashed, thick, purple] (9.9, 6.4) -- (9.9, 5.65) -- (2.0, 5.65) -- (2.0, 4.2)
+      node[midway, right=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny \textbf{Cable Invalidación Global FENCE.I}};
+
+    % 3. ENRUTADOR MMIO Y ÁRBITRO DE BUS (Visión Von Neumann Unificada)
+    \draw[thick, fill=purple!10, rounded corners=2mm] (0.0, 0.2) rectangle (7.0, 1.2);
+    \node at (3.5, 0.7) {\textbf{\small Árbitro de Bus Wishbone \& Router MMIO}};
+
+    % Conexiones L1 -> Árbitro
+    \draw[<->, thick, green!60!black] (1.6, 2.5) -- (1.6, 1.2)
+      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Miss I-Cache};
+    \draw[<->, thick, orange!80!black] (6.0, 2.5) -- (6.0, 1.2)
+      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Miss D-Cache};
+    \draw[->, thick, red!80!black] (9.85, 2.5) -- (9.85, 1.7) -- (7.0, 1.2)
+      node[midway, right=9mm, fill=white, inner sep=1.0pt, rounded corners=1pt] {\tiny Drenaje Buffer};
+
+    % 4. MEMORIA PRINCIPAL Y PERIFÉRICOS
+    \draw[thick, fill=gray!20, rounded corners=2mm] (0.0, -1.8) rectangle (3.8, -0.6);
+    \node[align=center] at (1.9, -1.2) {\textbf{\small RAM Principal (BRAM)}\\[-2pt]\tiny Espacio Unificado};
+
+    \draw[thick, fill=yellow!20, rounded corners=2mm] (4.8, -1.8) rectangle (9.5, -0.6);
+    \node[align=center] at (7.15, -1.2) {\textbf{\small Periféricos MMIO}\\[-2pt]\tiny UART, HPCs, LEDs};
+
+    % Conexiones Árbitro -> Memoria/MMIO
+    \draw[<->, very thick, blue!80!black] (1.9, 0.2) -- (1.9, -0.6)
+      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Bus Wishbone};
+    \draw[<->, very thick, purple!80!black] (5.5, 0.2) -- (5.5, -0.6)
+      node[midway, right=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Acceso Directo Periféricos};
+
+\end{tikzpicture}
+\caption{Esquema microarquitectónico de la Jerarquía de Memoria L1 en Arquitectura Harvard Modificada con invalidación \texttt{FENCE.I} y Write Buffer.}
+\label{fig:modified_harvard_architecture}
+\end{figure}
+\shorthandon{<>}
 
 \section{Referencias}
 
