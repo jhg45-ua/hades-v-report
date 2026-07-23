@@ -49,29 +49,24 @@
 % Configuración de enlaces
 \hypersetup{
     colorlinks=true,
-    linkcolor=blue!80!black,
-    citecolor=blue!80!black,
-    urlcolor=blue!80!black
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={HaDes-V: Memoria Técnica de Arquitectura},
+    pdfauthor={Julián Hinojosa Gil},
+    pdfsubject={Procesador RISC-V RV32I con BHT y L1 en FPGA},
 }
 
-% Estilo de encabezados y pies de página
+% Configuración de encabezados y pies de página
 \pagestyle{fancy}
 \fancyhf{}
-\rhead{\textit{HaDes-V (v2.0) - Memoria Técnica}}
-\lhead{Arquitectura de Computadores}
-\cfoot{\thepage}
-
-% FORMATO DE TÍTULOS DE SECCIÓN
-\titleformat{\section}
-  {\normalfont\Large\bfseries\color{blue!80!black}}{\thesection}{1em}{}
-\titleformat{\subsection}
-  {\normalfont\large\bfseries\color{blue!70!black}}{\thesubsection}{1em}{}
-\titleformat{\subsubsection}
-  {\normalfont\bfseries\color{black}}{\thesubsubsection}{1em}{}
-
+\fancyhead[L]{\textbf{HaDes-V} | Memoria Técnica (v2.0)}
+\fancyhead[R]{RISC-V Community Challenge}
+\fancyfoot[L]{Procesador RV32I en Artix-7}
+\fancyfoot[R]{\thepage}
 
 % ============================================================
-% CAJAS Y CUADROS DESTACADOS Y BUGS (tcolorbox)
+% CAJAS DE DESTACADOS Y BUGS (tcolorbox)
 % ============================================================
 \usepackage[most]{tcolorbox}
 
@@ -93,15 +88,6 @@
   arc=2mm,
 }
 
-% Caja Pedagógica: "En Lenguaje Sencillo"
-\newtcolorbox{conceptbox}[1]{
-  colback=green!5!white,
-  colframe=green!60!black,
-  fonttitle=\bfseries,
-  title={Idea Clave: #1},
-  arc=2mm,
-}
-
 % ============================================================
 % CÓDIGO FUENTE (listings) Y SINTAXIS HARDWARE / RISC-V
 % ============================================================
@@ -110,163 +96,250 @@
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{backcolour}{rgb}{0.96,0.96,0.96}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{codeorange}{rgb}{0.8,0.4,0}
+\definecolor{framecolor}{rgb}{0.7,0.7,0.7}
 
+% Estilo base para listings
 \lstdefinestyle{mystyle}{
     backgroundcolor=\color{backcolour},   
-    commentstyle=\color{codegreen},
-    keywordstyle=\color{blue!80!black}\bfseries,
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{blue}\bfseries,
     numberstyle=\tiny\color{codegray},
     stringstyle=\color{codepurple},
-    basicstyle=\ttfamily\footnotesize,
+    basicstyle=\ttfamily\small,
     breakatwhitespace=false,         
     breaklines=true,                 
     captionpos=b,                    
     keepspaces=true,                 
     numbers=left,                    
-    numbersep=5pt,                  
+    numbersep=8pt,
     showspaces=false,                
     showstringspaces=false,
     showtabs=false,                  
-    tabsize=2
+    tabsize=2,
+    frame=single,
+    frameround=tttt,
+    rulecolor=\color{framecolor},
+    framesep=4pt,
+    xleftmargin=15pt,
+    xrightmargin=5pt,
+    extendedchars=true,
+    inputencoding=utf8,
+    columns=flexible,
+    aboveskip=15pt,
+    belowskip=10pt,
+    literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+             {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+             {ñ}{{\~n}}1 {Ñ}{{\~N}}1 {¿}{{?`}}1 {¡}{{!`}}1
 }
 \lstset{style=mystyle}
 
+% --- Definición para SystemVerilog ---
+\lstdefinelanguage{SystemVerilog}{
+  keywords={always_ff, always_comb, always_latch, module, endmodule, logic, input, output, assign, if, else, case, endcase, begin, end, parameter, localparam, posedge, negedge},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={typedef, enum, struct},
+  ndkeywordstyle=\color{purple}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=true,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{codegreen}\itshape,
+  stringstyle=\color{codepurple},
+}
+
+% --- Definición para Ensamblador RISC-V ---
+\lstdefinelanguage{RISCV}{
+  keywords={add, addi, sub, lw, sw, jal, jalr, beq, bne, blt, bge, fence, fence.i, nop},
+  keywordstyle=\color{blue}\bfseries,
+  morekeywords={x0, x1, x2, sp, ra, a0, a1, t0, t1, t2},
+  keywordstyle=[2]\color{teal}\bfseries,
+  comment=[l]{\#},
+  morecomment=[l]{//},
+  commentstyle=\color{codegreen}\itshape,
+}
+
+% Formato para el título del listing
+\DeclareCaptionFont{white}{\color{white}}
+\DeclareCaptionFormat{listing}{\colorbox{gray}{\parbox{\dimexpr\textwidth-2\fboxsep\relax}{#1#2#3}}}
+\captionsetup[lstlisting]{format=listing, labelfont=white, textfont=white, singlelinecheck=false, margin=0pt, font={bf,footnotesize}}
 
 % ============================================================
-% DATOS DEL DOCUMENTO
+% CAPTIONS DE FIGURAS Y RUTAS DE IMÁGENES
 % ============================================================
-\title{\textbf{\Huge Proyecto HaDes-V (v2.0)}\\[0.3cm]
-\Large Memoria Técnica de Optimización Microarquitectónica:\\ Predicción Dinámica de Saltos y Jerarquía de Memoria L1 en FPGA}
-\author{\textbf{Julián Hernáez García}\\[0.1cm]
-\small Universidad de Alicante | Convocatoria RISC-V International Challenge}
-\date{\today}
+\graphicspath{{../img/}}
 
+\definecolor{captionbg}{RGB}{240,248,255}
+\definecolor{captionborder}{RGB}{70,130,180}
+\definecolor{captionlabel}{RGB}{25,25,112}
+
+\DeclareCaptionStyle{mystylefig}{
+  font={small,sf},
+  labelfont={bf,color=captionlabel},
+  textfont={it},
+  labelsep=period,
+  justification=centering,
+  singlelinecheck=true,
+  format=hang,
+  margin=10pt
+}
+\captionsetup[figure]{style=mystylefig}
 
 \begin{document}
 
-\maketitle
+% Portada e Índices...
+\pagenumbering{gobble}
+% (Mantén tu portada y tableofcontents)
 
-\begin{abstract}
-Este documento presenta la memoria técnica del desarrollo, optimización y validación física del procesador \textbf{HaDes-V} (v2.0). Partiendo de un núcleo docente escalar de 32 bits conforme a la especificación libre \textbf{RISC-V (RV32I)} con segmentación de 5 etapas, se diseñó e integró un sistema de especulación de control compuesto por un predictor de saltos dinámico bimodal (\textit{Branch History Table} - BHT) de $1024$ entradas con contadores saturantes de 2 bits y un acelerador de saltos incondicionales (\textit{JAL Bypass}). Posteriormente, se resolvió el «Muro de la Memoria» mediante una jerarquía L1 en **Arquitectura Harvard Modificada**, incorporando una caché de instrucciones (I-Cache), una caché de datos de 4 KB (D-Cache), un \textit{Write Buffer} asíncrono con política \textit{Fire \& Forget} y una línea de invalidación por hardware para mantener la coherencia de código mediante la instrucción \texttt{FENCE.I}. La telemetría en hardware mediante contadores de rendimiento (HPCs) en la etapa de \textit{Writeback} permitió validar un incremento de rendimiento del $63,8\%$ (elevando el IPC de $0,506$ a $0,829$) y eliminar hasta un $85,6\%$ de las paradas de memoria. El procesador fue sintetizado en la FPGA \textbf{Digilent Nexys A7-100T} (Xilinx Artix-7) alcanzando un cierre de tiempos positivo (\text{WNS} $= +0,036\text{ ns}$) a una frecuencia de reloj de **100 MHz**.
-\end{abstract}
-
-\tableofcontents
 \newpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
 
-% ============================================================
-% CAPÍTULO 1: RESUMEN EJECUTIVO E INTRODUCCIÓN
-% ============================================================
+% --- CAPÍTULOS DE HADES-V ---
+% Cap 1: Introducción y Resumen Ejecutivo
+% Cap 2: Contexto y Marco del Proyecto
+% Cap 3: Diseño Microarquitectónico e Innovaciones
+% Cap 4: Análisis Post-Mortem y Debugging
+% Cap 5: Evaluación Cuantitativa de Rendimiento y Validación en FPGA
+% Cap 6: Conclusiones y Trabajo Futuro
+
 \section{Resumen Ejecutivo e Introducción}
 
 \subsection{Presentación del Proyecto HaDes-V}
-El proyecto \textbf{HaDes-V} (\textit{Hardware Design RISC-V}) documenta la transformación de un procesador de prueba conceptual para docencia en un microcontrolador de altas prestaciones completamente funcional y desplegado en hardware real. 
-
-Para comprender el punto de partida sin perderse en la jerga, es importante definir las bases de la arquitectura:
-\begin{itemize}
-    \item \textbf{RISC-V (RV32I):} Es una arquitectura de conjunto de instrucciones (\textit{ISA}) abierta y libre de 32 bits. La nomenclatura \texttt{RV32I} indica que soporta el subconjunto base de instrucciones enteras básicas (sumas, restas, accesos a memoria y saltos), actuando como el «vocabulario estándar» que entiende la CPU.
-    \item \textbf{Procesador Escalar Single-Issue Bare-Metal:} Significa que el procesador procesa las instrucciones una a una de forma estrictamente secuencial (\textit{single-issue}), ejecutando el programa escrito directamente sobre el circuito electrónico (\textit{bare-metal}) sin intermediación de un sistema operativo.
-    \item \textbf{Modo Máquina (M-Mode):} Es el nivel de privilegio de ejecución único con acceso total e irrestricto a los recursos físicos del silicio, idéntico al funcionamiento de los microcontroladores empotrados en la industria.
-\end{itemize}
+El proyecto HaDes-V consiste en el diseño e implementación de un microcontrolador basado en la arquitectura de conjunto de instrucciones 
+(\textit{ISA}) de código abierto \textbf{RISC-V (RV32I)}. Partiendo de un núcleo escalar clásico de 5 etapas (\textit{Fetch}, \textit{Decode}, 
+\textit{Execute}, \textit{Memory}, \textit{Writeback}), el objetivo principal del trabajo es profundizar en las técnicas de diseño de procesadores, 
+acompañado de una evaluación cuantitativa que justifique cada decisión microarquitectónica tras implementar el diseño básico inicial. 
+Todo ello enmarcado en el desarrollo de un procesador para microcontroladores, con un enfoque claro en la eficiencia energética y la simplicidad de diseño.
 
 \subsection{Motivación: Los Muros del Control y de la Memoria}
+En un procesador segmentado básico, el rendimiento teórico de una instrucción por ciclo (\textit{IPC} = 1.0) se ve seriamente penalizado por dos
+factores fundamentales:
 
-\begin{conceptbox}{¿Por qué se frena un procesador?}
-Imagina un coche de carreras de gran potencia. De nada sirve su motor si en cada cruce de carreteras tiene que frenar a cero para preguntar qué camino tomar (\textbf{Muro del Control}), o si cada 10 metros debe detenerse durante varios minutos a esperar a que un camión cisterna lento le traiga combustible desde una refinería lejana (\textbf{Muro de la Memoria}). En un procesador, las tuberías de cómputo sufren exactamente estos dos frenos.
-\end{conceptbox}
+\begin{itemize}
+  \item \textbf{El Muro del Control:} Cuando el procesador encuentra una instrucción de salto condicional (como un bucle o una sentencia \texttt{if}),
+  la dirección del siguiente bloque de instrucciones no se conoce habitualmente hasta la etapa de ejecución. Esto obliga a purgar (\textit{flush}) la 
+  segmentación, perdiendo ciclos valiosos. 
+  \item \textbf{El Muro de la Memoria:} La velocidad a la que se ejecutan las instrucciones en la CPU supera enormemente la velocidad de respuesta de la memoria 
+  principal, generando paradas (\textit{stalls}) continuas durante las operaciones de lectura y escritura.
+\end{itemize}
 
-En un procesador segmentado clásico de 5 etapas (\textit{Fetch}, \textit{Decode}, \textit{Execute}, \textit{Memory}, \textit{Writeback}), la ejecución avanza como una cadena de montaje. Sin embargo, en el diseño base de HaDes-V surgían dos cuellos de botella fundamentales:
-
-\begin{enumerate}
-    \item \textbf{El Muro del Control (Saltos Condicionales):} La dirección a la que debe saltar un bucle (como un \texttt{for} o un \texttt{if}) no se calcula hasta la 3.ª etapa (\textit{Execute}). Sin un mecanismo de predicción, la CPU asumía de forma estática que el salto nunca se tomaría (\textit{Predict Not-Taken}). Si la suposición fallaba, el procesador debía vaciar o purgar (\textit{flush}) las dos instrucciones cargadas por error en la tubería, tirando a la basura **2 ciclos de reloj** por cada salto.
-    \item \textbf{El Muro de la Memoria (Latencia de RAM):} Las instrucciones de lectura (\texttt{LW}) y escritura (\texttt{SW}) deben comunicarse con la memoria RAM principal a través del bus del sistema. Mientras la memoria principal responde, la CPU debe congelar la segmentación (\textit{stall}), perdiendo valiosos ciclos en los que no se realiza cómputo útil.
-\end{enumerate}
+Teniendo en cuenta que para cualquier programa, incluso si es algo pequeño como para aprender, nos encontraremos con estos muros, surge la necesidad de implementar
+medidas que por lo menos lo mitiguen lo maximo posible, en este caso especulacion del control con una Branch History Table (BHT) y una cache L1.
 
 \subsection{Resumen de Contribuciones y Resultados Clave}
-Para superar ambos muros, en este trabajo se diseñaron e implementaron en código SystemVerilog tres grandes bloques microarquitectónicos:
+Para superar estas limitaciones, en este proyecto se presentan, integran y corroboran tres grandes mejoras microarquitectónicas sobre el núcleo base 
+HaDes-V:
 
-\begin{enumerate}
-    \item \textbf{Telemetría en Hardware (HPCs):} Incorporación de un conjunto de contadores de rendimiento de hardware (\textit{Hardware Performance Counters}) mapeados en registros especiales de control (\textit{CSRs}) en la etapa final de \textit{Writeback}, permitiendo medir ciclos, instrucciones, paradas y purgas sin alterar el camino crítico.
-    \item \textbf{Especulación de Control (BHT y JAL Bypass):} Creación de una tabla de historial de saltos (\textit{Branch History Table} - BHT) de $1024$ entradas con contadores saturantes de 2 bits que predice la dirección de los bucles en la etapa de \textit{Fetch}, junto con un decodificador rápido que resuelve las llamadas a funciones (\texttt{JAL}) a coste de **0 ciclos de penalización**.
-    \item \textbf{Jerarquía de Memoria L1 (Harvard Modificada) y Coherencia:} Separación en dos memorias caché ultrarrápidas de mapeo directo (I-Cache para instrucciones y D-Cache de 4 KB para datos), complementadas con un \textit{Write Buffer} asíncrono para escrituras y una línea de invalidación por hardware activada mediante la instrucción \texttt{FENCE.I} para evitar el problema del «código zombie» al cargar programas vía UART.
-\end{enumerate}
+\begin{itemize}
+  \item \textbf{Telemetría en Hardware (HPCs):} Si bien no altera el rendimiento propio del núcleo, constituye la herramienta indispensable para 
+  justificar empíricamente el resto de optimizaciones. Consiste en la inserción de contadores de rendimiento en la etapa de \textit{Writeback} para monitorizar en 
+  tiempo real métricas de IPC, ciclos, paradas y purgas sin impactar en el camino crítico.
+  \item \textbf{Jerarquía de Memoria L1 Harvard Modificada:} Integración de cachés independientes de instrucciones (I-Cache) y datos (D-Cache) de mapeo directo, 
+  un \textit{Write Buffer} asíncrono para absorber ráfagas de escritura a coste de cero ciclos de parada y soporte de coherencia mediante la instrucción \texttt{FENCE.I}. 
+  \item \textbf{Especulación de Control mediante BHT y JAL Bypass:} Implementación de una tabla de historial de saltos (\textit{Branch History Table}) bimodal 
+  de 2 bits y 1024 entradas (posteriormente de 4096 entradas), complementada con un mecanismo de aceleración rápida en la etapa de \textit{Fetch} para saltos 
+  incondicionales (\texttt{JAL}).
+\end{itemize}
+
+\begin{insightbox}{SÍNTESIS Y RENDIMIENTO FINAL}
+La integración conjunta de la BHT y la caché L1 permitió elevar el rendimiento práctico del procesador desde un IPC inicial de $\approx 0.50$ hasta valores de
+entre \textbf{0.83 y 0.95} en el conjunto de microbenchmarks. Asimismo, el diseño fue implementado con éxito en una FPGA Xilinx Artix-7 a \textbf{100 MHz} con un 
+margen temporal positivo (\textbf{WNS: +0.036 ns}).
+\end{insightbox}
 
 \subsection{Estructura de la Memoria}
-El resto de este informe se organiza como sigue: El \textbf{Capítulo 2} detalla el contexto del desafío organizado por RISC-V International y la arquitectura inicial. El \textbf{Capítulo 3} explica el diseño detallado de la BHT, las cachés L1 y la telemetría. El \textbf{Capítulo 4} expone el análisis forense de depuración (\textit{Post-Mortem}) analizando 7 fallos reales de hardware. El \textbf{Capítulo 5} presenta la evaluación cuantitativa de rendimiento sobre los microbenchmarks y los resultados de síntesis en la FPGA. Finalmente, el \textbf{Capítulo 6} sintetiza las conclusiones y el trabajo futuro.
+El resto de este documento se organiza de la siguiente manera: El Capítulo 2 detalla el contexto del proyecto dentro del \textit{Community Challenge with HaDes-V}. 
+El Capítulo 3 describe las decisiones de diseño microarquitectónico. El Capítulo 4 presenta un análisis \textit{post-mortem} de los retos de depuración. El Capítulo 5 
+evalúa cuantitativamente el rendimiento y la síntesis en FPGA. Finalmente, el Capítulo 6 expone las conclusiones y líneas de trabajo futuro.
 
-
-% ============================================================
-% CAPÍTULO 2: CONTEXTO Y MARCO DEL PROYECTO
-% ============================================================
 \section{Contexto y Marco del Proyecto}
 
 \subsection{El Community Challenge with HaDes-V}
-Este proyecto se ha desarrollado en el marco del \textit{Community Challenge with HaDes-V}, promovido por la organización global \textbf{RISC-V International} y organizado por el grupo de Arquitecturas y Sistemas Empotrados de la \textbf{Universidad Tecnológica de Graz (TU Graz)}. La iniciativa busca fomentar el aprendizaje práctico en el diseño y optimización de procesadores de código abierto.
+Este proyecto se ha desarrollado en el marco del \textit{Community Challenge with HaDes-V}, promovido por la organización \textbf{RISC-V International} y organizado
+por el grupo de Arquitecturas y Sistemas Empotrados de la \textbf{Universidad Tecnológica de Graz (TU Graz)}. La iniciativa busca fomentar el aprendizaje
+práctico en el diseño de procesadores de código abierto.
 
-El reto proponía a los participantes implementar primero una base común sobre un diseño de núcleo docente y, una vez completada esa línea base, diseñar e integrar cualquier tipo de mejora microarquitectónica para maximizar su rendimiento y eficiencia.
+El reto proponía a los participantes implementar primero una base comun sobre un diseño de nucleo docente y, una vez completado, añadir cualquier tipo de mejora posible.
 
-\subsection{Arquitectura de Partida}
-El núcleo base utilizado es \textbf{HaDes-V}, una plataforma desarrollada con fines docentes que implementa una arquitectura escalar de 32 bits conforme a la especificación estándar \textbf{RISC-V (RV32I)}, con un nivel de privilegio exclusivo de Modo Máquina (\textit{M-Mode}).
+\subsection{Arquitectura de partida}
+El núcleo base utilizado es HaDes-V, una plataforma desarrollada para la docencia que implementa una arquitectura escalar de 32 bits conforme a la especificación
+estándar \textbf{RISC-V (RV32I)}, con un nivel de privilegio exclusivo de Modo Máquina (\textit{M-Mode}).
 
 El núcleo de partida organiza su ruta de datos en una segmentación clásica de 5 etapas:
 \begin{enumerate}
     \item \textbf{Fetch (IF):} Captura de instrucciones desde la memoria utilizando el contador de programa (\textit{PC}).
     \item \textbf{Decode (ID):} Decodificación de la instrucción y lectura del banco de registros.
     \item \textbf{Execute (EX):} Cómputo en la Unidad Aritmético-Lógica (\textit{ALU}) y resolución condicional de saltos.
-    \item \textbf{Memory (MEM):} Transacciones de lectura (\texttt{LW}) y escritura (\texttt{SW}) sobre la memoria principal mediante el bus estandarizado \textit{Wishbone}.
+    \item \textbf{Memory (MEM):} Transacciones de lectura (\texttt{LW}) y escritura (\texttt{SW}) sobre la memoria principal mediante el bus estandarizado 
+    \textit{Wishbone}.
     \item \textbf{Writeback (WB):} Actualización del banco de registros con el resultado final.
 \end{enumerate}
 
-En su estado inicial, el procesador carece de predicción dinámica de saltos (utilizando una política estática \textit{"Predict Not-Taken"} que sufre una penalización fija de 2 ciclos por cada salto tomado) y realiza accesos directos a la memoria principal sin cachés intermedias ni buffers de escritura.
+En su estado inicial, el procesador carece de predicción dinámica de saltos (utilizando una política estática \textit{"Predict Not-Taken"} que sufre una 
+penalización fija de 2 ciclos por cada salto tomado) y realiza accesos directos a la memoria principal sin cachés intermedias ni buffers de escritura.
 
 \subsection{Entorno de Desarrollo y Flujo de Trabajo Hardware/Software}
-Para la realización del proyecto (tanto para la implementación como para la simulación y validación del núcleo), el repositorio oficial del laboratorio proporcionaba un flujo de trabajo compuesto por:
-
+Para la realización del proyecto, tanto para la implementación, simulación y validación del núcleo, se proporcionó ya en el repositorio oficial un flujo de
+trabajo compuesto por: 
 \begin{itemize}
-    \item \textbf{Simulación de Ciclo Exacto (Verilator):} Uso de \textbf{Verilator} para compilar la descripción del circuito escrita en SystemVerilog a un ejecutable C++, permitiendo simular millones de ciclos de reloj por segundo y depurar fallos mediante trazas de señales (\textit{waveforms}).
-    \item \textbf{Síntesis e Implementación Física (Xilinx Vivado):} Cadena de herramientas \textbf{AMD Xilinx Vivado} ejecutada mediante scripts automatizados Tcl y un \textit{Makefile} principal, encargada de traducir el código SystemVerilog a puertas lógicas y cables físicos sobre el chip FPGA.
-    \item \textbf{Toolchain de Software y Co-Diseño:} Uso del compilador \texttt{riscv64-unknown-elf-gcc} restringido al subconjunto de enteros \texttt{-march=rv32i -mabi=ilp32}. Los binarios finales se cargan en la FPGA mediante un \textit{Bootloader} residente en la memoria interna de la placa comunicándose por enlace serie UART.
+    \item \textbf{Simulación de Ciclo Exacto:} Uso de \textbf{Verilator} para compilar el código SystemVerilog a un ejecutable C++, permitiendo realizar simulación 
+    funcional de alta velocidad y depuración mediante trazas de señales (\textit{waveforms}).
+    \item \textbf{Síntesis e Implementación Física:} Cadena de herramientas \textbf{Xilinx Vivado} ejecutada mediante scripts automatizados Tcl y un \textit{Makefile}
+    principal.
+    \item \textbf{Toolchain de Software y Co-Diseño:} Uso del compilador \texttt{riscv64-unknown-elf-gcc} restringido al subconjunto de enteros 
+    \texttt{-march=rv32i -mabi=ilp32}. Los binarios finales se cargan en la FPGA mediante un \textit{Bootloader} residente en memoria BRAM comunicándose por enlace 
+    serie UART.
 \end{itemize}
 
-Si bien la práctica estaba originalmente planteada para ser ejecutada sobre placas FPGA Digilent Basys 3, para este trabajo contamos con la cesión por parte de la \textbf{Universidad de Alicante} de una placa de desarrollo de mayores prestaciones, la \textbf{Digilent Nexys A7-100T} (con chip \textbf{Xilinx Artix-7 XC7A100T-1CSG324C}), lo que nos permitió sintetizar y validar el procesador a una frecuencia de reloj objetivo de **100 MHz**.
+Si bien estaba planteada para poder ser ejecutada sobre placas FPGA Basys 3, nosotros conseguimos que la Universidad de Alicante nos cediera una placa de desarrollo 
+\textbf{Digilent Nexys A7-100T} con un chip \textbf{Xilinx Artix-7 XC7A100T-1CSG324C}, que nos permitió ejecutar el procesador a una frecuencia de reloj de 100 MHz.
 
-
-% ============================================================
-% CAPÍTULO 3: DISEÑO MICROARQUITECTÓNICO E INNOVACIONES
-% ============================================================
 \section{Diseño Microarquitectónico e Innovaciones}
 
 \subsection{Telemetría en Hardware: Performance Counters (HPCs)}
+Antes de integrar cualquier característica nueva como el predictor de saltos o memorias cache, necesitamos una manera de saber de forma determinista y exacta qué ocurre 
+dentro del nucleo sin alterar el comportamiento o reducir el rendimiento del que se parte.
 
-\subsubsection{Motivación y Necesidad de Observabilidad}
-\begin{conceptbox}{¿Por qué colocar contadores en el propio chip?}
-Medir el tiempo total que tarda un programa en ejecutarse con un cronómetro externo no explica **por qué** un procesador es lento. Se necesita un «termómetro de silicio» dentro del chip capaz de contar exactamente cuántos ciclos se han dedicado a calcular, cuántos se han perdido esperando a la memoria RAM y cuántos se han tirado a la basura por adivinar mal un salto.
-\end{conceptbox}
+En un entorno de simulación como Verilator o sobre la FPGA, medir únicamente el tiempo de ejecución resulta insuficiente para justificar decisiones de diseño. Es indispensable 
+disponer de un "termómetro de silicio" interno capaz de diferenciar los ciclos de la CPU en los utiles para el computo, perdidos por paradas de memoria (\textit{stalls}) y ciclos 
+desaprovechados por especulación errónea (\textit{flushes}).
 
-Antes de integrar cualquier característica nueva como el predictor de saltos o memorias caché, necesitábamos una manera de saber de forma determinista y exacta qué ocurre dentro del núcleo sin alterar su comportamiento o reducir el rendimiento del que se parte. Por ello, la primera gran mejora introducida sobre el núcleo base HaDes-V fue un subsistema de \textbf{Contadores de Rendimiento de Hardware} (\textit{Hardware Performance Counters} - HPCs).
+Por ello, la primera gran mejora introducida sobre el núcleo base HaDes-V fue un subsistema de \textbf{Contadores de Rendimiento de Hardware} (\textit{Hardware Performance Counters} - HPCs).
 
-Los HPCs se ubicaron estratégicamente en la \textbf{última etapa de la segmentación: Writeback (WB)}. En esta etapa, las instrucciones ya han sido resueltas y confirmadas de forma inmutable (\textit{retired instructions}). La instrumentación en WB procesa exclusivamente señales registradas, desacoplando la lógica de telemetría de los multiplexores críticos de las etapas previas para proteger la meta de los **100 MHz** en la FPGA.
+Los HPCs se ubicaron estratégicamente en la \textbf{última etapa de la segmentación: Writeback (WB)}. En esta etapa, las instrucciones ya han sido resueltas y confirmadas de forma 
+inmutable. La instrumentación en WB procesa exclusivamente señales registradas, desacoplando la lógica de telemetría de los multiplexores críticos de direccionamiento de las etapas previas.
 
 El subsistema monitoriza en tiempo real las siguientes métricas:
 \begin{itemize}
     \item \textbf{\texttt{CYCLE}:} Recuento total de ciclos de reloj transcurridos.
-    \item \textbf{\texttt{INSTRUCTION}:} Número de instrucciones efectivamente completadas con éxito.
-    \item \textbf{\texttt{STALL}:} Ciclos en los que la ruta de datos permanece congelada por latencia del bus o dependencias de datos.
+    \item \textbf{\texttt{INSTRUCTION}:} Número de instrucciones efectivamente retiradas (\textit{retired instructions}).
+    \item \textbf{\texttt{STALL}:} Ciclos en los que la ruta de datos permanece congelada por latencia del bus o dependencias.
     \item \textbf{\texttt{FLUSH}:} Ocurrencias de purga en la tubería por saltos mal predichos.
     \item \textbf{\texttt{BRANCH} / \texttt{MISPREDICT}:} Evaluación de instrucciones de salto condicional y recuento de errores de especulación.
 \end{itemize}
 
 \subsubsection{Interfaz de Software mediante CSRs y Control del Efecto Observador}
-Para que el software pueda leer estas métricas sin sondas externas, los contadores se mapearon en el espacio de \textbf{Registros de Control y Estado} (\textit{CSRs}) estándar de RISC-V (\texttt{mhpmcounter3}, \texttt{mhpmcounter4}, etc.), accesibles con la instrucción ensamblador \texttt{csrr} (\textit{CSR Read}).
+Para que el software ejecutado por el procesador pueda leer estas métricas sin necesidad de sondas lógicas externas o analizadores de espectro, los contadores se mapearon en el espacio de 
+\textbf{Registros de Control y Estado} (\textit{CSRs}) estándar de la especificación RISC-V (\texttt{mhpmcounter3}, \texttt{mhpmcounter4}, etc.). El programa accede a ellos mediante la 
+instrucción ensamblador \texttt{csrr} (\textit{Control and Status Register Read}).
 
-Al volcar la telemetría al final de la ejecución de una carga de trabajo, surge el conocido \textit{Efecto Observador}: la propia rutina encargada de leer los contadores e imprimirlos por pantalla incrementa el recuento total de instrucciones. En nuestro harness de evaluación, esta sobrecarga consiste en un bloque fijo y determinista de exactamente \textbf{11 instrucciones \texttt{csrr}} al término del programa. Al conocer con precisión matemática esta constante, es posible restar $11$ al recuento para aislar el trabajo neto del algoritmo evaluado sin introducir distorsiones.
-
+Al volcar la telemetría al final de la ejecución de una carga de trabajo, surge el conocido \textit{Efecto Observador}: la propia rutina encargada de leer los contadores y enviarlos vía 
+UART incrementa el recuento total de instrucciones ejecutadas. En nuestro harness de evaluación, esta sobrecarga consiste en un bloque fijo y determinista de exactamente 
+\textbf{11 instrucciones \texttt{csrr}} al término del programa. Al conocer con precisión matemática esta constante, es posible aislar el trabajo neto del algoritmo evaluado sin introducir 
+distorsiones en los resultados.
 
 \subsection{Especulación de Control (BHT y JAL Bypass)}
-Nuestro diseño se basa en un procesador básico segmentado de 5 etapas, donde la condición de las sentencias condicionales (tanto bucles como sentencias \texttt{if}) no se conoce hasta la etapa de ejecución. Además, de base seguíamos una política de predicción estática \textit{"Predict Not-Taken"}, lo que significa que cada vez que se encontraba un salto condicional, el procesador asumía que no se iba a tomar y continuaba con la siguiente instrucción secuencial. Por tanto, en los casos donde esta asunción era incorrecta, se producía un \textit{flush} de la segmentación y una penalización de 2 ciclos por cada salto tomado.
+Nuestro diseño se basa en un procesador basico segmentado de 5 etapas, donde la condicion de las sentencias condicionales, tanto bucles como ifs, no se conoce hasta la etapa de ejecución.
+Ademas de base, seguimos una politica de prediccion estatica "Predict Not-Taken", lo que significa que cada vez que se encuentra un salto condicional, el procesador asume que no se va a tomar 
+y continua con la siguiente instrucción. Por tanto en los casos donde esta asuncion sea incorrecta , se producirá un \textit{flush} de la segmentación y una penalización de 2 ciclos por cada 
+salto tomado.
 
 \subsubsection{Predictor Dinámico Bimodal mediante BHT}
-Para mitigar este impacto, implementamos un predictor dinámico de saltos basado en una \textbf{Branch History Table (BHT)}. La BHT actúa como una memoria interna indexada por los bits inferiores de la dirección del Contador de Programa (\textit{PC}). En lugar de asumir un comportamiento fijo, la tabla almacena el historial reciente de cada instrucción de salto utilizando un contador de 2 bits con cuatro estados posibles:
+Para mitigar este impacto, implementamos un predictor dinámico de saltos basado en una \textbf{Branch History Table (BHT)}. La BHT actúa como una memoria interna indexada por los bits 
+inferiores de la dirección del Contador de Programa (\textit{PC}). En lugar de asumir un comportamiento fijo, la tabla almacena el historial reciente de cada instrucción de salto utilizando 
+un contador de 2 bits con cuatro estados posibles:
 
 \begin{itemize}
     \item \texttt{00} (\textit{Strongly Not-Taken}): Predice que el salto NO se tomará.
@@ -275,9 +348,20 @@ Para mitigar este impacto, implementamos un predictor dinámico de saltos basado
     \item \texttt{11} (\textit{Strongly Taken}): Predice que el salto SÍ se tomará.
 \end{itemize}
 
-La clave técnica de emplear 2 bits frente a un predictor de 1 bit radica en la \textbf{histéresis}. En un bucle que se repite muchas veces (ej. 100 iteraciones), la última iteración siempre fallará (ya que el bucle termina y el salto no se toma). Un predictor de 1 bit cambiaría su estado inmediatamente a "No Tomado", volviendo a fallar en la primera iteración de la siguiente ejecución del bucle. El contador saturante de 2 bits actúa como el margen de un termostato: amortigua este fallo puntual degradando el estado de \textit{Strongly Taken} a \textit{Weakly Taken}, manteniendo la predicción correcta para futuras ejecuciones.
+La clave técnica de emplear 2 bits frente a un predictor de 1 bit radica en la \textbf{histéresis}. En un bucle que se repite muchas veces, la última iteración siempre fallará (ya que el 
+bucle termina y el salto no se toma). Un predictor de 1 bit cambiaría su estado inmediatamente a "No Tomado", fallando de nuevo en la primera iteración de la siguiente ejecución del bucle. 
+El contador saturante de 2 bits amortigua este fallo puntual degradando el estado de \textit{Strongly Taken} a \textit{Weakly Taken}, manteniendo la predicción correcta para futuras ejecuciones.
 
-\shorthandoff{<>}
+El funcionamiento en la ruta de datos es síncrono y distribuido:
+\begin{enumerate}
+    \item \textbf{Etapa de Fetch (IF):} Se consulta la BHT con el PC actual. Si el contador indica que el salto debe tomarse (\texttt{1X}), el procesador redirige inmediatamente el PC hacia 
+    la dirección de destino del salto en el siguiente ciclo.
+    \item \textbf{Etapa de Execute (EX):} La ALU resuelve la condición real del salto. Si la predicción fue correcta, la ejecución continúa a latencia cero. Si hubo un error de especulación 
+    (\textit{mispredict}), la etapa de Execute emite una purga (\textit{flush}) para vaciar las dos instrucciones erróneas cargadas en la tubería, redirige el PC al camino correcto y 
+    actualiza el contador de la BHT.
+\end{enumerate}
+
+\shorthandoff{<>} % Previene conflictos si usas babel spanish
 \begin{figure}[H]
 \centering
 \begin{subfigure}[b]{0.52\textwidth}
@@ -296,10 +380,11 @@ La clave técnica de emplear 2 bits frente a un predictor de 1 bit radica en la 
     \node[above, color=blue!80!black] at (4.1,5.3) {\textbf{\tiny ÍNDICE BHT (10 bits)}};
     \node[above] at (6.75,5.3) {\tiny \texttt{2'b00}};
 
-    % Flecha del Índice hacia la columna de Entrada
-    \draw[->,very thick,blue!80!black] (2.7,4.6) -- (2.7,3.4) node[midway,left] {\tiny Selecciona Fila};
+    % Flecha del Índice hacia la tabla
+    \draw[->,very thick,blue!80!black] (2.7,4.6) -- (2.7,3.4) node[midway,right] {\tiny Selecciona Fila};
 
     % 2. Tabla BHT (2 Columnas Explícitas)
+    % Cabecera de la tabla
     \draw[thick, fill=gray!25] (1.2,3.0) rectangle (6.8,3.4);
     \node at (2.7,3.2) {\textbf{\tiny Entrada / Índice}};
     \node at (5.4,3.2) {\textbf{\tiny Estado (2 bits)}};
@@ -307,7 +392,7 @@ La clave técnica de emplear 2 bits frente a un predictor de 1 bit radica en la 
 
     % Cuerpo de la Tabla
     \draw[thick, fill=gray!5] (1.2,0.2) rectangle (6.8,3.0);
-    \draw[thick] (4.1,0.2) -- (4.1,3.0);
+    \draw[thick] (4.1,0.2) -- (4.1,3.0); % Divisoria de columnas
 
     % Filas de la BHT
     \draw (1.2,2.5) -- (6.8,2.5);
@@ -334,7 +419,7 @@ La clave técnica de emplear 2 bits frente a un predictor de 1 bit radica en la 
     \node at (2.65,0.4) {\tiny \texttt{0x3FF} (Entrada 1023)};
     \node at (5.45,0.4) {\tiny \texttt{00} (Strongly NT)};
 
-    % Salida de Predicción
+    % Salida de Predicción desde la celda de Estado
     \draw[->,very thick,red!80!black] (6.8,1.2) -- (8.0,1.2) node[right, align=left] {\textbf{\tiny Predicción}\\[-2pt]\tiny (MSB = 1 $\rightarrow$ Taken)};
 \end{tikzpicture}
 \caption{Indexación y lectura en dos columnas de la BHT.}
@@ -369,32 +454,53 @@ La clave técnica de emplear 2 bits frente a un predictor de 1 bit radica en la 
 \end{figure}
 \shorthandon{<>}
 
-El funcionamiento en la ruta de datos se ilustra en la Figura \ref{fig:bht_complete_diagram}:
-\begin{enumerate}
-    \item \textbf{Etapa de Fetch (IF):} Como se muestra en la Figura \ref{fig:bht_complete_diagram}(a), se consulta la BHT utilizando los 10 bits centrales de la dirección (\texttt{PC[11:2]}). Si el contador indica que el salto debe tomarse (\texttt{1X}), el procesador redirige inmediatamente el PC hacia la dirección de destino del salto en el siguiente ciclo.
-    \item \textbf{Etapa de Execute (EX):} La ALU resuelve la condición real. Si la predicción fue correcta, la ejecución continúa a latencia cero. Si hubo un error de especulación (\textit{mispredict}), la etapa de Execute emite una purga (\textit{flush}) de 2 ciclos, corrige el PC y actualiza el contador saturante (Figura \ref{fig:bht_complete_diagram}(b)).
-\end{enumerate}
-
 \subsubsection{Aceleración Transparente mediante JAL Bypass}
-Además de los saltos condicionales, el análisis de nuestras cargas de trabajo reveló una sobrecarga apreciable en instrucciones de salto incondicional (\texttt{JAL} - \textit{Jump and Link}). Al no contar el núcleo con la extensión de multiplicación por hardware (RV32M), el compilador emite constantes llamadas a la subrutina del sistema \texttt{\_\_mulsi3} para emular multiplicaciones por software.
+Además de los saltos condicionales, el análisis de nuestras cargas de trabajo reveló una sobrecarga apreciable en instrucciones de salto incondicional (\texttt{JAL} - \textit{Jump and Link}). 
+Al no contar el núcleo con la extensión de multiplicación por hardware (RV32M), el compilador emite constantes llamadas a la subrutina del sistema \texttt{\_\_mulsi3} para emular 
+multiplicaciones por software.
 
-Debido a que una instrucción \texttt{JAL} se toma siempre con un 100\% de certeza, resultaba ineficiente pagar penalizaciones de ciclo esperando a que la instrucción avanzara por la segmentación. Para resolver esto, inyectamos un decodificador parcial en la propia etapa de \textit{Fetch}. Al detectar el código de operación de un \texttt{JAL}, la etapa de \textit{Fetch} calcula la dirección de destino inmediatamente en el mismo ciclo, realizando un \textbf{JAL Bypass} que redirige el PC \textbf{a coste de 0 ciclos de parada o purga}.
-
+Debido a que una instrucción \texttt{JAL} se toma siempre con un 100\% de certeza, resultaba ineficiente pagar penalizaciones de ciclo esperando a que la instrucción avanzara por la 
+segmentación. Para resolver esto, inyectamos un decodificador parcial en la propia etapa de \textit{Fetch}. Al detectar el código de operación de un \texttt{JAL}, la etapa de 
+\textit{Fetch} calcula la dirección de destino inmediatamente en el mismo ciclo, realizando un \textbf{JAL Bypass} que redirige el PC \textbf{a coste de 0 ciclos de parada o purga}.
 
 \subsection{Jerarquía de Memoria L1 Harvard Modificada y Coherencia}
 
 \subsubsection{Justificación Arquitectónica: De Von Neumann a Harvard Modificada}
-\begin{conceptbox}{Von Neumann vs. Harvard Pura vs. Harvard Modificada}
+En un procesador segmentado de 5 etapas, la coexistencia de las etapas de \textit{Fetch} (búsqueda continua de instrucciones) y \textit{Memory} (lectura y escritura de operandos) 
+sobre un único bus de memoria de estructura \textbf{Von Neumann} genera un cuello de botella insostenible. Cada instrucción \texttt{LW} o \texttt{SW} competiría con la captura de 
+la siguiente instrucción, provocando paradas (\textit{stalls}) estructurales continuas.
+
+Para erradicar este conflicto sin renunciar a la flexibilidad de un espacio de direccionamiento unificado, en el procesador HaDes-V implementamos una \textbf{Arquitectura Harvard Modificada}
+en el nivel L1, cuya topología general se ilustra en la Figura \ref{fig:modified_harvard_architecture}.
+
+\subsubsection{Estructura del Subsistema L1 e Interconexión Wishbone}
+Como se observa en el diagrama, el nivel L1 desacopla completamente los accesos del núcleo mediante dos memorias caché independientes de mapeo directo (\textit{Direct-Mapped}):
+
 \begin{itemize}
-    \item \textbf{Von Neumann:} Una única mesa de trabajo compartida para libros (recetas/instrucciones) e ingredientes (datos). Si el cocinero quiere picar cebolla y leer la receta a la vez, se estorba a sí mismo.
-    \item \textbf{Harvard Pura:} Dos habitaciones totalmente separadas con paredes de hormigón. Nadie puede llevar una receta a la habitación de cortar verduras. Muy rápido, pero imposible cargar programas nuevos en caliente.
-    \item \textbf{Harvard Modificada (HaDes-V):} Dos mesas rápidas independientes dentro de la cocina (I-Cache y D-Cache L1), pero conectadas a una despensa principal común (RAM) a través de un distribuidor inteligente (Árbitro Wishbone).
+    \item \textbf{Caché L1 de Instrucciones (I-Cache):} Interconectada con la etapa de \textit{Fetch}, suministra instrucciones al procesador a latencia cero (0 ciclos de penalización 
+    en caso de acierto o \textit{Hit}).
+    \item \textbf{Caché L1 de Datos (D-Cache):} Con una capacidad de 4 KB, gestiona los accesos de lectura y escritura de la etapa de \textit{Memory} operando con direccionamiento a 
+    nivel de palabra (\textit{Word Address}).
 \end{itemize}
-\end{conceptbox}
 
-En un procesador segmentado de 5 etapas, la coexistencia de las etapas de \textit{Fetch} (búsqueda continua de instrucciones) y \textit{Memory} (lectura y escritura de operandos) sobre un único bus de memoria de estructura \textbf{Von Neumann} genera un cuello de botella insostenible. Cada instrucción \texttt{LW} o \texttt{SW} competiría con la captura de la siguiente instrucción, provocando paradas (\textit{stalls}) estructurales continuas.
+Ambas memorias emplean líneas de ráfaga de 4 palabras (16 bytes) para explotar el principio de \textbf{localidad espacial}. Cuando ocurre un fallo de caché (\textit{Miss}), el módulo 
+**Árbitro Wishbone** (situado en la capa inferior de la Figura \ref{fig:modified_harvard_architecture}) gestiona la prioridad del bus, trayendo un bloque contiguo desde la RAM principal.
 
-Para erradicar este conflicto, en el procesador HaDes-V implementamos una \textbf{Arquitectura Harvard Modificada} en el nivel L1, cuya topología general se ilustra en la Figura \ref{fig:modified_harvard_architecture}.
+\subsubsection{Write Buffer Asíncrono y Enrutamiento MMIO}
+Para mitigar la latencia en las operaciones de escritura (\texttt{STORE}), se interpuso un \textbf{Write Buffer} (cola FIFO asíncrona de 2 entradas) a la salida de la D-Cache. Bajo 
+la política de diseño \textit{"Fire \& Forget"}, cuando la CPU ejecuta una instrucción \texttt{SW}, deposita el dato en la FIFO y continúa su ejecución en **0 ciclos de parada**, mientras 
+el buffer drena los datos hacia la RAM en segundo plano.
+
+Asimismo, el sistema integra un **Enrutador MMIO** (\textit{Memory-Mapped I/O}). Como se detalla en la Figura \ref{fig:modified_harvard_architecture}, las direcciones destinadas a 
+periféricos (como los contadores HPCs, LEDs o la UART) son desviadas directamente evitando la caché de datos, previniendo la contaminación o corrupción de las líneas de caché.
+
+\subsubsection{Coherencia de Instrucciones mediante FENCE.I}
+La separación Harvard en L1 introduce el problema de coherencia del "código zombie": cuando el Bootloader recibe un nuevo ejecutable vía UART, escribe las nuevas instrucciones en la RAM 
+a través del bus de datos (D-Cache / Write Buffer). Sin embargo, la I-Cache retiene copias desactualizadas del programa anterior.
+
+Para resolver este conflicto, se diseñó un cable de invalidación por hardware (representado por la línea discontinua morada en la Figura \ref{fig:modified_harvard_architecture}). Al 
+ejecutar la instrucción estandarizada \textbf{\texttt{FENCE.I}}, la etapa de \textit{Writeback} emite un pulso que invalida de forma síncrona todos los bits de validez (\textit{valid bits}) 
+de la I-Cache, forzando a la etapa de \textit{Fetch} a recargar el código fresco desde la memoria RAM.
 
 \shorthandoff{<>}
 \begin{figure}[H]
@@ -428,21 +534,25 @@ Para erradicar este conflicto, en el procesador HaDes-V implementamos una \textb
     \node[align=center] at (9.85, 3.35) {\textbf{\small Write Buffer}\\[-2pt]\tiny FIFO (2 ent.)};
 
     % Conexiones CPU <-> L1
+    % Instrucciones (x=1.0)
     \draw[<->, very thick, green!60!black] (1.0, 6.4) -- (1.0, 4.2)
       node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Instrucciones};
 
+    % Lecturas (LW) (x=7.2)
     \draw[<->, very thick, orange!80!black] (7.2, 6.4) -- (7.2, 4.2)
       node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Lecturas (LW)};
 
+    % Escrituras (SW)
     \draw[->, very thick, red!80!black] (8.0, 6.4) -- (8.0, 4.8) -- (9.85, 4.8) -- (9.85, 4.2)
-      node[pos=0.5, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Escrituras (SW)};
+      node[midway, right=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Escrituras (SW)};
 
+    % Cable FENCE.I (Coherencia WB -> I-Cache)
     \draw[->, dashed, thick, purple] (9.9, 6.4) -- (9.9, 5.65) -- (2.0, 5.65) -- (2.0, 4.2)
-      node[pos=0.5, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny \textbf{Cable Invalidación Global FENCE.I}};
+      node[midway, right=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny \textbf{Cable Invalidación Global FENCE.I}};
 
-    % 3. ENRUTADOR MMIO Y ÁRBITRO DE BUS
+    % 3. ENRUTADOR MMIO Y ÁRBITRO DE BUS (Visión Von Neumann Unificada)
     \draw[thick, fill=purple!10, rounded corners=2mm] (0.0, 0.2) rectangle (7.0, 1.2);
-    \node at (3.5, 0.7) {\textbf{\small Árbitro de Bus Wishbone \& Router MMIO}};
+    \node at (3.5, 0.7) {\textbf{\footnotesize Árbitro de Bus Wishbone \& Router MMIO}};
 
     % Conexiones L1 -> Árbitro
     \draw[<->, thick, green!60!black] (1.6, 2.5) -- (1.6, 1.2)
@@ -454,7 +564,7 @@ Para erradicar este conflicto, en el procesador HaDes-V implementamos una \textb
 
     % 4. MEMORIA PRINCIPAL Y PERIFÉRICOS
     \draw[thick, fill=gray!20, rounded corners=2mm] (0.0, -1.8) rectangle (3.8, -0.6);
-    \node[align=center] at (1.9, -1.2) {\textbf{\small RAM Principal (BRAM)}\\[-2pt]\tiny Espacio Unificado};
+    \node[align=center] at (1.9, -1.2) {\textbf{\footnotesize RAM Principal (BRAM)}\\[-2pt]\tiny Espacio Unificado};
 
     \draw[thick, fill=yellow!20, rounded corners=2mm] (4.8, -1.8) rectangle (9.5, -0.6);
     \node[align=center] at (7.15, -1.2) {\textbf{\small Periféricos MMIO}\\[-2pt]\tiny UART, HPCs, LEDs};
@@ -471,110 +581,104 @@ Para erradicar este conflicto, en el procesador HaDes-V implementamos una \textb
 \end{figure}
 \shorthandon{<>}
 
-\subsubsection{Estructura del Subsistema L1 e Interconexión Wishbone}
-Como se observa en el diagrama de la Figura \ref{fig:modified_harvard_architecture}, el nivel L1 desacopla completamente los accesos del núcleo mediante dos memorias caché independientes de mapeo directo (\textit{Direct-Mapped}):
-
-\begin{itemize}
-    \item \textbf{Caché L1 de Instrucciones (I-Cache):} Interconectada con la etapa de \textit{Fetch}, suministra instrucciones al procesador a latencia cero (0 ciclos de penalización en caso de acierto o \textit{Hit}).
-    \item \textbf{Caché L1 de Datos (D-Cache):} Con una capacidad de 4 KB, gestiona los accesos de lectura y escritura de la etapa de \textit{Memory} operando con direccionamiento a nivel de palabra (\textit{Word Address}).
-\end{itemize}
-
-Ambas memorias emplean líneas de ráfaga de 4 palabras (16 bytes) para explotar el principio de \textbf{localidad espacial}. Cuando ocurre un fallo de caché (\textit{Miss}), el módulo \textbf{Árbitro Wishbone} (situado en la capa inferior de la Figura \ref{fig:modified_harvard_architecture}) gestiona la prioridad del bus, trayendo un bloque contiguo desde la RAM principal.
-
-\subsubsection{Write Buffer Asíncrono y Enrutamiento MMIO}
-Para mitigar la latencia en las operaciones de escritura (\texttt{STORE}), se interpuso un \textbf{Write Buffer} (cola FIFO asíncrona de 2 entradas) a la salida de la D-Cache. Bajo la política de diseño \textit{"Fire \& Forget"}, cuando la CPU ejecuta una instrucción \texttt{SW}, deposita el dato en la FIFO ("deja la carta en el buzón") y continúa su ejecución en **0 ciclos de parada**, mientras el buffer drena los datos hacia la RAM en segundo plano.
-
-Asimismo, el sistema integra un **Enrutador MMIO** (\textit{Memory-Mapped I/O}). Las direcciones destinadas a periféricos (como los contadores HPCs, LEDs o el puerto serie UART) son desviadas directamente evitando la caché de datos, previniendo la contaminación o corrupción de las líneas de caché.
-
-\subsubsection{Coherencia de Instrucciones mediante FENCE.I}
-La separación Harvard en L1 introduce el problema de coherencia del "código zombie": cuando el Bootloader recibe un nuevo ejecutable vía UART, escribe las nuevas instrucciones en la RAM a través del bus de datos (D-Cache / Write Buffer). Sin embargo, la I-Cache retiene copias desactualizadas del programa anterior.
-
-Para resolver este conflicto, se diseñó un cable de invalidación por hardware (línea discontinua morada en la Figura \ref{fig:modified_harvard_architecture}). Al ejecutar la instrucción estandarizada \textbf{\texttt{FENCE.I}}, la etapa de \textit{Writeback} emite un pulso que invalida de forma síncrona todos los bits de validez (\textit{valid bits}) de la I-Cache, forzando a la etapa de \textit{Fetch} a recargar el código fresco desde la memoria RAM.
-
-
-% ============================================================
-% CAPÍTULO 4: ANÁLISIS POST-MORTEM Y DEBUGGING
-% ============================================================
-\section{Historias de Silicio: Análisis Post-Mortem y Debugging}
+\section{Análisis Post-Mortem y Debugging}
 
 \subsection{Filosofía del Análisis Post-Mortem}
-En la ingeniería de procesadores, la diferencia entre un prototipo académico y un núcleo de grado industrial radica en la comprensión de los estados transitorios de la ruta de datos. La integración de la especulación de control y la jerarquía L1 sobre un procesador segmentado expuso diversos problemas de sincronización, no determinismo y discrepancias entre simuladores de software y silicio real. En este capítulo se detallan los siete fallos más críticos enfrentados y superados durante el desarrollo de HaDes-V.
+En la ingeniería de procesadores, la diferencia entre un prototipo académico y un núcleo de grado industrial radica en la comprensión de los estados transitorios 
+de la ruta de datos. La integración de la especulación de control y la jerarquía de memoria L1 sobre un procesador segmentado expuso diversos problemas de sincronización, 
+no determinismo y discrepancias entre simuladores de software y silicio real. En este capítulo se detallan los siete fallos más críticos enfrentados y superados durante el 
+desarrollo de HaDes-V.
 
 \subsection{Depuración del Control e I-Cache (Canal de Instrucciones)}
 
-\begin{bugbox}{Caso 1: El Artefacto del Simulador y los 512 Flushes Fantasma}
-\textbf{Síntoma:} Al insertar la estructura base de la caché de instrucciones, la ejecución de \textit{Matrix Mult} registró un incremento de exactamente 512 purgas (\textit{flushes}) en la BHT, a pesar de que el código binario no había sufrido cambios.
+\begin{bugbox}{El Artefacto del Simulador y los 512 Flushes Fantasma}
+\textbf{Síntoma:} Al insertar la estructura base de la caché de instrucciones, la ejecución del benchmark \textit{Matrix Mult} registró un incremento injustificado de 
+exactamente 512 purgas (\textit{flushes}) en la BHT, a pesar de que el código binario no había sufrido cambios.
 
-\textbf{Causa Raíz:} El fallo no residía en el RTL de SystemVerilog. Al modificar la jerarquía de módulos, el simulador \textbf{Verilator} (compilado a C++) generó una semilla de aleatorización distinta para los registros no inicializados explícitamente. Mientras que la FPGA Xilinx infiere un reseteo implícito a cero (\textit{Strongly Not-Taken}), Verilator arrancó la mitad de las 1024 entradas ($2^9 = 512$) en el estado inverso (\textit{Strongly Taken}), provocando un patrón masivo de errores de especulación iniciales.
+\textbf{Causa:} El fallo no residía en el RTL de SystemVerilog. Al modificar la jerarquía de módulos, el simulador \textbf{Verilator} (compilado a C++) generó una semilla 
+de aleatorización distinta para los registros no inicializados explícitamente. Mientras que la FPGA Xilinx infiere un reseteo implícito a cero (\textit{Strongly Not-Taken}), 
+Verilator arrancó la mitad de las 1024 entradas ($2^9 = 512$) en el estado inverso (\textit{Strongly Taken}), provocando un patrón masivo de errores de especulación iniciales.
 
-\textbf{Lección de Ingeniería:} El entorno de simulación por software no siempre replica el comportamiento de encendido (\textit{power-on reset}) del silicio físico. Es obligatorio incluir rutinas explícitas de reseteo por hardware en estructuras de almacenamiento especulativo.
+\textbf{Lección:} El entorno de simulación por software no siempre replica el comportamiento de encendido (\textit{power-on reset}) del silicio físico. Es obligatorio incluir 
+rutinas explícitas de reseteo por hardware en estructuras de almacenamiento especulativo.
 \end{bugbox}
 
-\begin{bugbox}{Caso 2: Alineación y Direccionamiento (Byte Address vs. Word Address)}
-\textbf{Síntoma:} Durante el primer intento de integración de la I-Cache, el procesador entraba en un bucle infinito de fallos de caché (\textit{Simulation Timeout}), produciendo trazas de simulación masivas y quedando colgado en la primera instrucción.
+\begin{bugbox}{Alineación y Direccionamiento (Byte Address vs. Word Address)}
+\textbf{Síntoma:} Durante el primer intento de integración de la I-Cache, el procesador entraba en un bucle infinito de fallos de caché (\textit{Simulation Timeout}), 
+produciendo trazas de simulación masivas y quedando colgado en la primera instrucción.
 
-\textbf{Causa Raíz:} Confusión entre el direccionamiento por bytes del procesador RISC-V y el direccionamiento por palabras de las memorias RAM internas. El PC del procesador se incrementa de 4 en 4 bytes (\texttt{0x00, 0x04, 0x08, 0x0C}), por lo que los bits \texttt{PC[1:0]} valen siempre \texttt{2'b00}. Al extraer los campos de la dirección para la caché, se utilizaron los bits sin desplazar para indexar las palabras de la ráfaga, provocando que la caché comparase etiquetas (\textit{tags}) desalineadas y nunca detectara un acierto (\textit{Hit}).
+\textbf{Causa:} Confusión entre el direccionamiento por bytes del procesador RISC-V y el direccionamiento por palabras de las memorias RAM internas. El PC del procesador se 
+incrementa de 4 en 4 bytes (\texttt{0x00, 0x04, 0x08, 0x0C}), por lo que los bits \texttt{PC[1:0]} valen siempre \texttt{2'b00}. Al extraer los campos de la dirección para la 
+caché, se utilizaron los bits sin desplazar para indexar las palabras de la ráfaga, provocando que la caché comparase etiquetas (\textit{tags}) desalineadas y nunca detectara 
+un acierto (\textit{Hit}).
 
-\textbf{Lección de Ingeniería:} Se debe parametrizar y empaquetar la extracción de campos (\textit{Tag, Index, Offset}) mediante estructuras SystemVerilog unificadas (\texttt{struct packed}) dentro de un paquete global (\texttt{cache\_pkg.sv}) para evitar desalineaciones manuales.
+\textbf{Lección:} Se debe parametrizar y empaquetar la extracción de campos (\textit{Tag, Index, Offset}) mediante estructuras SystemVerilog unificadas (\texttt{struct packed}) 
+dentro de un paquete global (\texttt{cache\_pkg.sv}) para evitar desalineaciones manuales.
 \end{bugbox}
 
-\begin{bugbox}{Caso 3: Muestreo Combinacional y Retención con fetch\_base\_adr}
-\textbf{Síntoma:} En ejecuciones con saltos frecuentes, la I-Cache sobreescribía líneas de instrucciones válidas con direcciones corruptas (como \texttt{0x3FFFFFDE}), provocando fallos fatales en el bus Wishbone.
+\begin{bugbox}{Muestreo Combinacional y Retención con fetch\_base\_adr}
+\textbf{Síntoma:} En ejecuciones con saltos frecuentes, la I-Cache sobreescribía líneas de instrucciones válidas con direcciones corruptas (como \texttt{0x3FFFFFDE}), provocando 
+fallos fatales en el bus Wishbone.
 
-\textbf{Causa Raíz:} Cuando ocurría un fallo de caché (\textit{Miss}), la FSM tardaba varios ciclos en traer la ráfaga de 4 palabras desde la RAM. Mientras la CPU estaba congelada esperando los datos, la etapa de \textit{Execute} resolvió un salto mal predicho y emitió un \textit{Flush}, cambiando instantáneamente los cables combinacionales del PC de entrada. Al terminar de leer la RAM, la caché utilizó las señales combinacionales del \textit{nuevo} PC para guardar los datos del \textit{viejo} PC.
+\textbf{Causa:} Cuando ocurría un fallo de caché (\textit{Miss}), la FSM tardaba varios ciclos en traer la ráfaga de 4 palabras desde la RAM. Mientras la CPU estaba congelada esperando 
+los datos, la etapa de \textit{Execute} resolvió un salto mal predicho y emitió un \textit{Flush}, cambiando instantáneamente los cables combinacionales del PC de entrada. Al terminar 
+de leer la RAM, la caché utilizó las señales combinacionales del \textit{nuevo} PC para guardar los datos del \textit{viejo} PC.
 
-\textbf{Lección de Ingeniería:} Una memoria caché jamás debe confiar en los cables combinacionales de entrada de la CPU en el momento de escribir en sus memorias internas. Es obligatorio registrar e inmovilizar la dirección base del fallo mediante un registro de retención inmutable (\texttt{fetch\_base\_adr}).
+\textbf{Lección:} Una memoria caché jamás debe confiar en los cables combinacionales de entrada de la CPU en el momento de escribir en sus memorias internas. Es obligatorio registrar 
+e inmovilizar la dirección base del fallo mediante un registro de retención inmutable (\texttt{fetch\_base\_adr}).
 \end{bugbox}
 
-\begin{bugbox}{Caso 4: Desfase de Fase en el Bus Wishbone (5 ACKs para 4 Palabras)}
-\textbf{Síntoma:} Las trazas de señales del bus Wishbone revelaron que la memoria RAM entregaba 5 datos para una ráfaga diseñada estrictamente para 4 palabras (16 bytes), pidiendo la primera dirección dos veces seguidas.
+\begin{bugbox}{Desfase de Fase en el Bus Wishbone (5 ACKs para 4 Palabras)}
+\textbf{Síntoma:} Las trazas de señales del bus Wishbone revelaron que la memoria RAM entregaba 5 datos para una ráfaga diseñada estrictamente para 4 palabras (16 bytes), pidiendo 
+la primera dirección dos veces seguidas.
 
-\textbf{Causa Raíz:} Las señales maestras del bus (\texttt{mem\_port.adr}) estaban asignadas dentro del bloque secuencial de la FSM (\texttt{always\_ff}). Al pasar del estado \texttt{FETCH\_W0} a \texttt{FETCH\_W1}, la dirección física tardaba un ciclo de reloj adicional en actualizarse en las salidas, provocando que el esclavo Wishbone leyese la dirección antigua por segunda vez.
+\textbf{Causa:} Las señales maestras del bus (\texttt{mem\_port.adr}) estaban asignadas dentro del bloque secuencial de la FSM (\texttt{always\_ff}). Al pasar del estado \texttt{FETCH\_W0} 
+a \texttt{FETCH\_W1}, la dirección física tardaba un ciclo de reloj adicional en actualizarse en las salidas, provocando que el esclavo Wishbone leyese la dirección antigua por segunda vez.
 
-\textbf{Lección de Ingeniería:} En máquinas de estados maestras para buses de memoria, el estado de la FSM debe ser secuencial (\texttt{always\_ff}), pero las salidas registradas hacia el bus deben gestionarse en un bloque combinacional separado (\texttt{always\_comb}) para eliminar latencias de registro no deseadas.
+\textbf{Lección:} En máquinas de estados maestras para buses de memoria, el estado de la FSM debe ser secuencial (\texttt{always\_ff}), pero las salidas registradas hacia el bus deben 
+gestionarse en un bloque combinacional separado (\texttt{always\_comb}) para eliminar latencias de registro no deseadas.
 \end{bugbox}
 
 \subsection{Depuración de la D-Cache, Write Buffer y Periféricos MMIO (Canal de Datos)}
 
-\begin{bugbox}{Caso 5: Ineficiencia por Thrashing de Capacidad en la D-Cache}
-\textbf{Síntoma:} Con un tamaño de D-Cache inicial de 256 Bytes, la ejecución de \textit{Bubble Sort} arrojaba exactamente el mismo número de ciclos en la pasada COLD (caché fría) que en la pasada HOT (caché caliente), sin mostrar ganancia de rendimiento.
+\begin{bugbox}{Ineficiencia por Thrashing de Capacidad en la D-Cache}
+\textbf{Síntoma:} Con un tamaño de D-Cache inicial de 256 Bytes, la ejecución de \textit{Bubble Sort} arrojaba exactamente el mismo número de ciclos en la pasada COLD (caché fría) 
+que en la pasada HOT (caché caliente), sin mostrar ganancia de rendimiento.
 
-\textbf{Causa Raíz:} El tamaño de la caché era insuficiente para albergar el vector de datos procesado por el algoritmo. Las iteraciones del bucle provocaban que los accesos a datos expulsaran continuamente a las líneas recién cargadas (\textit{Thrashing} de capacidad), anulando el beneficio de la pasada caliente.
+\textbf{Causa:} El tamaño de la caché era insuficiente para albergar el vector de datos procesado por el algoritmo. Las iteraciones del bucle provocaban que los accesos a datos 
+expulsaran continuamente a las líneas recién cargadas (\textit{Thrashing} de capacidad), anulando el beneficio de la pasada caliente.
 
-\textbf{Lección de Ingeniería:} Al escalar la D-Cache a \textbf{4 KB} (128 líneas de 16 bytes), la pasada HOT logró retener la totalidad de la estructura de datos en SRAM interna, reduciendo los accesos al bus principal al mínimo técnico.
+\textbf{Lección:} Al escalar la D-Cache a \textbf{4 KB} (128 líneas de 16 bytes), la pasada HOT logró retener la totalidad de la estructura de datos en SRAM interna, reduciendo los 
+accesos al bus principal al mínimo técnico.
 \end{bugbox}
 
-\begin{bugbox}{Caso 6: Colisión de Bus Wishbone entre Write Buffer y MMIO}
-\textbf{Síntoma:} Al enviar cadenas de texto por la UART durante la ejecución de tareas intensivas en memoria, los caracteres impresos en la consola serie aparecían completamente corrompidos.
+\begin{bugbox}{Colisión de Bus Wishbone entre Write Buffer y MMIO}
+\textbf{Síntoma:} Al enviar cadenas de texto por la UART durante la ejecución de tareas intensivas en memoria, los caracteres impresos en la consola serie aparecían completamente 
+corrompidos.
 
-\textbf{Causa Raíz:} Se produjo un conflicto de bus cuando la CPU intentaba realizar un acceso de escritura a un periférico MMIO (\textit{Memory-Mapped I/O}) de forma síncrona en el mismo ciclo en que el \textit{Write Buffer} estaba drenando un \texttt{STORE} previo hacia la memoria RAM en segundo plano. Ambas entidades compitieron por las señales \texttt{cyc} y \texttt{stb} del bus Wishbone.
+\textbf{Causa:} Se produjo un conflicto de bus cuando la CPU intentaba realizar un acceso de escritura a un periférico MMIO (\textit{Memory-Mapped I/O}) de forma síncrona en el mismo 
+ciclo en que el \textit{Write Buffer} estaba drenando un \texttt{STORE} previo hacia la memoria RAM en segundo plano. Ambas entidades compitieron por las señales \texttt{cyc} y \texttt{stb} 
+del bus Wishbone.
 
-\textbf{Lección de Ingeniería:} Se reestructuró la FSM de datos añadiendo el estado estricto \texttt{MMIO\_ACCESS}. Cuando la CPU detecta una dirección de periférico, se fuerza una parada (\textit{stall}) hasta que el \textit{Write Buffer} haya vaciado completamente sus entradas y el bus esté en absoluto silencio.
+\textbf{Lección:} Se reestructuró la FSM de datos añadiendo el estado estricto \texttt{MMIO\_ACCESS}. Cuando la CPU detecta una dirección de periférico, se fuerza una parada (\textit{stall}) 
+hasta que el \textit{Write Buffer} haya vaciado completamente sus entradas y el bus esté en absoluto silencio.
 \end{bugbox}
 
-\begin{bugbox}{Caso 7: Incoherencia de Código y Resolución del Bug del "Código Zombie"}
-\textbf{Síntoma:} Tras recibir un nuevo ejecutable \texttt{.hex} a través del Bootloader por puerto serie UART, el procesador saltaba a la dirección inicial del nuevo programa, pero ejecutaba instrucciones obsoletas del programa anterior o entraba en trampa de excepción.
+\begin{bugbox}{Incoherencia de Código y Resolución del Bug del ``Código Zombie''}
+\textbf{Síntoma:} Tras recibir un nuevo ejecutable \texttt{.hex} a través del Bootloader por puerto serie UART, el procesador saltaba a la dirección inicial del nuevo programa, 
+pero ejecutaba instrucciones obsoletas del programa anterior o entraba en trampa de excepción.
 
-\textbf{Causa Raíz:} Conflicto de coherencia en la arquitectura Harvard. El Bootloader escribió el nuevo programa en la RAM a través de la interfaz de datos (D-Cache / Write Buffer). Sin embargo, la I-Cache mantenía almacenadas en sus líneas las instrucciones del ejecutable antiguo ("código zombie"), entregándolas a la etapa de \textit{Fetch} en lugar de leer la RAM actualizada.
+\textbf{Causa:} Conflicto de coherencia en la arquitectura Harvard. El Bootloader escribió el nuevo programa en la RAM a través de la interfaz de datos (D-Cache / Write Buffer). 
+Sin embargo, la I-Cache mantenía almacenadas en sus líneas las instrucciones del ejecutable antiguo ("código zombie"), entregándolas a la etapa de \textit{Fetch} en lugar de leer 
+la RAM actualizada.
 
-\textbf{Lección de Ingeniería:} Se implementó una línea de invalidación por hardware (\texttt{fence\_i\_flush\_out}). Al decodificar en \textit{Writeback} la instrucción \texttt{FENCE.I}, se emite un pulso que borra de forma síncrona los bits de validez (\texttt{valid\_ram = 0}) de la I-Cache, forzando la recarga limpia de las nuevas instrucciones desde la RAM.
+\textbf{Lección:} Se implementó una línea de invalidación por hardware (\texttt{fence\_i\_flush\_out}). Al decodificar en \textit{Writeback} la instrucción \texttt{FENCE.I}, se 
+emite un pulso que borra de forma síncrona los bits de validez (\texttt{valid\_ram = 0}) de la I-Cache, forzando la recarga limpia de las nuevas instrucciones desde la RAM.
 \end{bugbox}
 
-
-% ============================================================
-% CAPÍTULO 5: EVALUACIÓN CUANTITATIVA Y CIERRE EN FPGA
-% ============================================================
 \section{Evaluación Cuantitativa de Rendimiento y Cierre en FPGA}
 
 \subsection{Metodología de Evaluación y Cargas de Trabajo}
-
-\begin{conceptbox}{¿Qué representan las pasadas COLD y HOT?}
-\begin{itemize}
-    \item \textbf{Pasada COLD (En Frío):} Simula el arranque del procesador tras encender la máquina. Las memorias caché están vacías y el predictor de saltos no conoce el programa, teniendo que consultar la memoria RAM lenta continuamente.
-    \item \textbf{Pasada HOT (En Caliente):} Simula la ejecución continua. Las instrucciones y datos frecuentes ya residen en la memoria caché L1 ultrarrápida y la BHT se ha «entrenado» reconociendo el comportamiento exacto de los bucles.
-\end{itemize}
-\end{conceptbox}
-
 La caracterización experimental del procesador HaDes-V se realizó mediante un harness de evaluación que ejecuta cuatro microbenchmarks sintéticos representativos, diseñados para estresar diferentes aspectos microarquitectónicos del núcleo:
 
 \begin{itemize}
@@ -583,6 +687,8 @@ La caracterización experimental del procesador HaDes-V se realizó mediante un 
     \item \textbf{Memory Copy:} Benchmark orientado a transferencias de datos en ráfaga con un alto porcentaje de instrucciones de escritura (\texttt{SW}).
     \item \textbf{Fibonacci:} Algoritmo recursivo que ejercita el manejo de la pila (\textit{stack}) con accesos cruzados de lectura y escritura Read-After-Write (RAW).
 \end{itemize}
+
+Para aislar los efectos de inicialización y adaptación del hardware, cada benchmark se ejecutó en dos fases secuenciales: una primera pasada «en frío» (\textbf{COLD}), con las cachés vacías y la BHT desentrenada (como al arrancar el sistema por primera vez), y una segunda pasada «en caliente» (\textbf{HOT}), operando con las líneas de caché precargadas y los contadores de historial estabilizados.
 
 \subsection{Análisis del Instruction Mix y Desglose de Pipeline}
 La infraestructura de telemetría (HPCs) mapeada en la etapa de \textit{Writeback} permitió registrar la distribución exacta de instrucciones por categoría funcional para cada programa, como se detalla en la Tabla \ref{tab:instruction_mix}.
@@ -692,15 +798,6 @@ Fibonacci   & COLD $\to$ HOT & $128 \to 126$ & $875 \to 875$ (Estable) \\
 
 \subsection{Síntesis Física, Recursos y Cierre de Tiempos en Vivado}
 
-\begin{conceptbox}{Comprendiendo las métricas de síntesis en la FPGA}
-\begin{itemize}
-    \item \textbf{Worst Negative Slack (WNS):} Es el margen de tiempo del cable eléctrico más lento del chip. A 100 MHz, cada tic de reloj dura 10 nanosegundos. Un WNS positivo (\textbf{+0,036 ns}) significa que la señal eléctrica más lenta cruzó todo el circuito y se estabilizó **0,036 nanosegundos antes** del siguiente pulso de reloj, garantizando que el procesador funciona sin errores físicos ni colmados en la FPGA.
-    \item \textbf{Total Negative Slack (TNS):} La suma de retrasos de todos los puntos del chip. Un $\text{TNS} = 0,000\text{ ns}$ garantiza cero violaciones de tiempo.
-    \item \textbf{Endpoints (26.222 / 27.993):} El número total de conexiones e insumos de registros evaluados por la herramienta AMD Vivado. Tener 0 endpoints fallidos indica un Cierre Temporal del $100\%$.
-    \item \textbf{LUTs / LUTRAM / Flip-Flops / BRAMs:} Las celdas lógicas reconfigurables (\textit{LUTs}), memorias distribuidas (\textit{LUTRAM}), registros de 1 bit (\textit{Flip-Flops}) y bloques de memoria SRAM dedicada (\textit{BRAMs}) utilizados en el chip Artix-7 de la tarjeta Nexys A7.
-\end{itemize}
-\end{conceptbox}
-
 La evolución física del diseño sintetizado para la FPGA \textbf{Digilent Nexys A7-100T} (Xilinx Artix-7 \texttt{xc7a100tcsg324-1}) a una frecuencia objetivo de **100 MHz** se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
 
 \begin{table}[H]
@@ -733,63 +830,6 @@ Un resultado fundamental del proyecto es la recuperación del cierre temporal:
     \item El sistema completo con cachés L1 e interconexión Wishbone cerró con un slack positivo confiable ($\text{WNS} = +0,036\text{ ns}$ con $26.222$ endpoints y $+0,015\text{ ns}$ en la compilación extendida de $27.993$ endpoints), garantizando un funcionamiento estable y sin errores en la tarjeta física.
 \end{enumerate}
 
-
-% ============================================================
-% CAPÍTULO 6: CONCLUSIONES Y TRABAJO FUTURO
-% ============================================================
-\section{Conclusiones y Trabajo Futuro}
-
-\subsection{Síntesis de Logros y Cumplimiento de Objetivos}
-En el marco del \textit{Community Challenge with HaDes-V} convocado por la \textbf{RISC-V Academy} y la \textbf{TU Graz}, este trabajo ha transformado un núcleo procesador docente básico de 5 etapas en un microcontrolador de altas prestaciones, validado e implementado físicamente sobre la FPGA \textbf{Digilent Nexys A7-100T} a una frecuencia de reloj de **100 MHz**.
-
-A lo largo del proyecto se han alcanzado los siguientes hitos fundamentales:
-\begin{enumerate}
-    \item \textbf{Especulación de Control Eficiente:} La integración de la \textit{Branch History Table} (BHT) de $1024$ entradas con contadores saturantes de 2 bits y el mecanismo \textit{JAL Bypass} eliminó el $99\%$ de las purgas de segmentación en bucles iterativos (\textit{Bubble Sort} redujo sus \textit{flushes} de $9.899$ a $101$), elevando el IPC base de $0,506$ a $0,829$.
-    \item \textbf{Jerarquía L1 Harvard Modificada:} La separación en I-Cache y D-Cache de $4\text{ KB}$ junto con el \textit{Write Buffer} asíncrono (\textit{Fire \& Forget}) absorbió las paradas por accesos a memoria, logrando reducciones de \textit{stalls} de hasta un $85,6\%$ en multiplicación de matrices y un $36,8\%$ en transferencias de memoria.
-    \item \textbf{Coherencia y Sincronización por Hardware:} Se resolvió de forma transparente el problema del "código zombie" al cargar ejecutables vía UART mediante la implementación de una línea de invalidación síncrona activada por la instrucción estándar \texttt{FENCE.I}.
-    \item \textbf{Telemetría Transparente y Cierre Temporal:} La ubicación estratégica de los contadores HPCs en la etapa de \textit{Writeback} permitió auditar con precisión el rendimiento del núcleo sin degradar el camino crítico, garantizando un cierre de tiempos positivo (\text{WNS} $= +0,036\text{ ns}$) a $100\text{ MHz}$.
-\end{enumerate}
-
-\subsection{Lecciones de Ingeniería RTL}
-El análisis post-mortem de las diferentes fases del desarrollo ha puesto de manifiesto principios esenciales en el diseño de circuitos digitales:
-\begin{itemize}
-    \item \textbf{Observabilidad desde el primer día:} Disponer de contadores de rendimiento de hardware deterministas es indispensable para tomar decisiones microarquitectónicas basadas en evidencias empíricas.
-    \item \textbf{Desacoplamiento del camino crítico:} Mantener la lógica de especulación e instrumentación fuera de los multiplexores de direccionamiento en \textit{Fetch} y \textit{Execute} es vital para mantener elevadas frecuencias de operación en FPGAs.
-    \item \textbf{Defensa contra transitorios:} La necesidad de registros de retención inmutables (\texttt{fetch\_base\_adr}) y estados strictly de bus (\texttt{MMIO\_ACCESS}) demuestra que el hardware debe protegerse contra señales combinacionales fluctuantes durante situaciones de congelación del pipeline (\textit{stall}).
-\end{itemize}
-
-\subsection{Líneas de Trabajo Futuro}
-La arquitectura consolidada de HaDes-V (v2.0) constituye una base sólida para abordar futuras ampliaciones en tres grandes vectores:
-
-\begin{enumerate}
-    \item \textbf{Extensión de Multiplicación/División por Hardware (RV32M):} Incorporar una unidad multiplicadora segmentada para eliminar las $1.024$ llamadas a la subrutina de software \texttt{\_\_mulsi3} detectadas en el \textit{Instruction Mix}, permitiendo que cargas aritméticas alcancen el límite escalar ($IPC \approx 1,0$).
-    \item \textbf{Especulación Global Correlacionada (Predictor Gshare):} Evolucionar la BHT bimodal hacia un predictor de tipo \textit{Gshare} que combine el historial global de saltos con los bits del PC mediante una operación XOR, mejorando la precisión en bucles con ramas condicionales anidadas o interdependientes.
-    \item \textbf{Sustrato de Interrupciones y Tiempo Real (CLINT/PLIC):} Implementar un controlador de interrupciones para dotar al procesador de capacidad de reacción determinista ante eventos físicos externos con latencias de nanosegundos, habilitando el despliegue de un sistema operativo de tiempo real (\textit{RTOS}).
-\end{enumerate}
-
-
-% ============================================================
-% REFERENCIAS Y BIBLIOGRAFÍA
-% ============================================================
 \section{Referencias}
-
-\begin{thebibliography}{99}
-
-\bibitem{hennessy2019}
-J.~L. Hennessy and D.~A. Patterson, \textit{Computer Architecture: A Quantitative Approach}, 6th~ed., Morgan Kaufmann, 2019.
-
-\bibitem{scheipel2024}
-T.~Scheipel, D.~Beikircher, and F.~Riedl, \textit{Microcontroller Design, Laboratory Instruction Guide: HADES-V}, Graz University of Technology, Dec. 2024.
-
-\bibitem{riscv_spec}
-A.~Waterman and K.~Asanovi\'c, \textit{The RISC-V Instruction Set Manual, Volume I: Unprivileged ISA}, Version 20191213, RISC-V International, 2019.
-
-\bibitem{wishbone_spec}
-OpenCores, \textit{WISHBONE System-on-Chip (SoC) Interconnection Architecture for Portable IP Cores}, Rev. B4, 2010.
-
-\bibitem{verilator}
-W.~Snyder et~al., \textit{Verilator: Open-source SystemVerilog Simulator and C++ Testbench Generator}, [Online]. Available: \url{https://www.veripool.org/verilator/}.
-
-\end{thebibliography}
 
 \end{document}
