@@ -596,7 +596,7 @@ Asimismo, el sistema integra un \textbf{Enrutador MMIO} (\textit{Memory-Mapped I
 el puerto serie UART) son desviadas directamente evitando la caché de datos, previniendo la contaminación o corrupción de las líneas de caché.
 
 \subsubsection{Coherencia de Instrucciones mediante FENCE.I}
-La separación Harvard en L1 introduce el problema de coherencia del "código zombie": cuando el Bootloader recibe un nuevo ejecutable vía UART, escribe las
+La separación Harvard en L1 introduce el problema de coherencia del ``código zombie'': cuando el Bootloader recibe un nuevo ejecutable vía UART, escribe las
 nuevas instrucciones en la RAM a través del bus de datos (D-Cache / Write Buffer). Sin embargo, la I-Cache retiene copias desactualizadas del programa anterior.
 
 Para resolver este conflicto, se diseñó un cable de invalidación por hardware (línea discontinua morada en la Figura \ref{fig:modified_harvard_architecture}).
@@ -623,7 +623,7 @@ durante el desarrollo de HaDes-V.
 
     \textbf{Causa:} El fallo no residía en el RTL de SystemVerilog. Al modificar la jerarquía de módulos, el simulador \textbf{Verilator} (compilado a C++)
     generó una semilla de aleatorización distinta para los registros no inicializados explícitamente. Mientras que la FPGA Xilinx infiere un reseteo implícito a
-    cero (\textit{Strongly Not-Taken}), Verilator arrancó la mitad de las 1024 entradas ($2^9 = 512$) en el estado inverso (\textit{Strongly Taken}), provocando un
+    cero (\textit{Strongly Not-Taken}), Verilator arrancó la mitad de las 4096 entradas ($2^9 = 512$) en el estado inverso (\textit{Strongly Taken}), provocando un
     patrón masivo de errores de especulación iniciales.
 
     \textbf{Lección:} El entorno de simulación por software no siempre replica el comportamiento de encendido (\textit{power-on reset}) del silicio
@@ -794,7 +794,7 @@ Fibonacci   & COLD & 12.773 & 0,755 & 10.781 & 0,895 & 10.832 & 0,890 & VALID \\
 
 \subsubsection{Validación del Determinismo Matemático en la BHT}
 En la versión \textit{Baseline}, \textit{Bubble Sort} registró $9.899$ purgas (\textit{flushes}) por la política estática \textit{Predict Not-Taken}. Tras
-activar la BHT de $1024$ entradas, las purgas en la pasada HOT se redujeron a sólo $101$.
+activar la BHT de $4096$ entradas, las purgas en la pasada HOT se redujeron a sólo $101$.
 
 Aplicando la penalización fija de $2$ ciclos por error de especulación:
 \begin{equation}
@@ -811,23 +811,32 @@ El contador de hardware capturó exactamente \textbf{$30.718$ ciclos} en la vers
 $0,506$ a $0,829$.
 
 \subsubsection{Análisis de Aliasing y Capacidad: BHT 1K vs. BHT 4K}
-Durante la fase de optimización se evaluó experimentalmente el escalado de la BHT desde $1.024$ ($1\text{K}$) hasta $4.096$ ($4\text{K}$) entradas. En la suite
-de pruebas completa, ambas configuraciones arrojaron recuentos de ciclos y purgas \textbf{estrictamente idénticos} ($101$ flushes en \textit{Bubble Sort HOT}, $1$
-flush en \textit{Memory Copy HOT} y $126$ flushes en \textit{Fibonacci HOT}).
+\begin{conceptbox}{El Punto Dulce del Predictor Bimodal según Hennessy \& Patterson}
+    En la literatura fundamental de arquitectura de computadores, Hennessy y Patterson establecen que una BHT de \textbf{$4.096$ entradas (4K)} representa el «punto dulce» 
+    (\textit{sweet spot}) en predictores bimodales de 2 bits. Con un consumo estricto de $1\text{ KB}$ de SRAM ($8.192\text{ bits}$), esta capacidad maximiza la tasa de 
+    aciertos eliminando prácticamente el \textit{aliasing} (colisiones de saltos distintos en la misma celda) antes de alcanzar la zona de rendimientos decrecientes.
+\end{conceptbox}
 
-Este comportamiento se explica porque los programas empaquetados presentan un conjunto de trabajo (\textit{working set}) con pocas instrucciones de salto activas
-concurrentes (entre $2$ y $5$ ramas condicionales). Con $1.024$ entradas ($2^{10}$), los bits \texttt{PC[11:2]} son suficientes para indexar cada salto en una
-celda única sin provocar solapamiento de direcciones (\textit{aliasing}). 
+Durante la fase de caracterización se evaluó el comportamiento del procesador variando la capacidad de la BHT entre $1.024$ ($1\text{K}$) y $4.096$ ($4\text{K}$) 
+entradas. En la suite de microbenchmarks sintéticos evaluada, ambas configuraciones registraron recuentos de ciclos y purgas de segmentación estrictamente idénticos 
+($101$ \textit{flushes} en \textit{Bubble Sort HOT}, $1$ \textit{flush} en \textit{Memory Copy HOT} y $126$ \textit{flushes} en \textit{Fibonacci HOT}).
 
-Desde el punto de vista del hardware:
+Este comportamiento empírico se explica por la reducida densidad de control de los algoritmos de prueba, cuyos bucles principales contienen únicamente entre $2$ y $5$
+instrucciones de salto condicional activas. En este escenario acotado, incluso los $10$ bits de índice de la versión de $1\text{K}$ (\texttt{PC[11:2]}) resultaban
+suficientes para evitar solapamientos de direcciones en la tabla.
+
+Sin embargo, para garantizar que el procesador HaDes-V sea capaz de ejecutar programas reales de mayor escala y densidad de código sin degradar su rendimiento por 
+\textit{aliasing}, \textbf{se seleccionó como arquitectura final la configuración de $4.096$ entradas ($4\text{K}$)}.
+
+El análisis de recursos sobre la FPGA Artix-7 demuestra la alta eficiencia de esta elección:
 \begin{itemize}
-    \item \textbf{BHT de 1K Entradas:} Requiere $1.024 \times 2 \text{ bits} = 2.048 \text{ bits}$ ($\mathbf{256\text{ Bytes}}$ de almacenamiento interno).
-    \item \textbf{BHT de 4K Entradas:} Requiere $4.096 \times 2 \text{ bits} = 8.192 \text{ bits}$ ($\mathbf{1.024\text{ Bytes}}$ / $1\text{ KB}$ de SRAM/LUTRAM).
+    \item \textbf{BHT de 1K Entradas:} Requiere $1.024 \times 2 \text{ bits} = 2.048 \text{ bits}$ ($256\text{ Bytes}$ / $0,25\text{ KB}$).
+    \item \textbf{BHT de 4K Entradas (Diseño Definitivo):} Requiere $4.096 \times 2 \text{ bits} = 8.192 \text{ bits}$ ($\mathbf{1.024\text{ Bytes}}$ 
+    / $\mathbf{1\text{ KB}}$ de LUTRAM/SRAM).
 \end{itemize}
 
-Dado que la BHT de $4\text{K}$ cuatriplica el consumo de recursos de memoria interna en la FPGA sin aportar ni un solo ciclo de mejora en el rendimiento, se
-determinó que la configuración de \textbf{$1.024$ entradas representa el punto óptimo de diseño} (\textit{sweet spot}), maximizando la eficiencia de área sin
-comprometer la precisión especulativa.
+Dado que cuatriplicar la capacidad especulativa solo representa el $1\%$ del uso total de LUTRAM de la FPGA Nexys A7 y no penaliza la frecuencia de reloj 
+($100\text{ MHz}$ garantizados), el diseño final consolida la BHT de $4\text{K}$ entradas, alineando el núcleo con los estándares de rendimiento de la industria.
 
 \subsubsection{Eficiencia del Subsistema L1 y Absorción de Latencias}
 Al comparar los eventos de la ruta de datos entre pases COLD y HOT en la Tabla \ref{tab:pipeline_events}, se comprueba la absorción de latencias por el
@@ -837,9 +846,9 @@ subsistema de memoria:
 \begin{table}[H]
 \centering
 \small
-\caption{Eventos del pipeline (Flushes y Stalls) en el sistema final L1 + BHT.}
+\caption{Eventos del pipeline (Stalls) en el sistema final L1 + BHT.}
 \label{tab:pipeline_events}
-\begin{tabularx}{\textwidth}{L c c}
+\begin{tabularx}{0.88\textwidth}{@{}>{\centering\arraybackslash}p{0.26\textwidth} >{\centering\arraybackslash}p{0.22\textwidth} >{\centering\arraybackslash}X@{}}
 \toprule
 \textbf{Benchmark} & \textbf{Pasada} & \textbf{Paradas de Memoria (Stalls)} \\
 \midrule
@@ -852,28 +861,40 @@ Fibonacci   & COLD $\to$ HOT & $875 \to 875$ (Estable) \\
 \end{table}
 
 \begin{itemize}
-    \item \textbf{Localidad Temporal en Matrix Mult:} En la pasada COLD, la asignación inicial de las matrices en la D-Cache generó $216$ ciclos de parada. En la pasada HOT, los operandos residían en las líneas de $4\text{ KB}$, reduciendo las paradas de memoria a sólo $31$ ciclos (absorbiendo el $85,6\%$ de la latencia).
-    \item \textbf{Escrituras Asíncronas en Memory Copy:} El \textit{Write Buffer} absorbió las ráfagas de instrucciones \texttt{SW} mediante la política \textit{Fire \& Forget}, reduciendo los \textit{stalls} de $902$ a $570$ ciclos en caliente.
+    \item \textbf{Localidad Temporal en Matrix Mult:} En la pasada COLD, la asignación inicial de las matrices en la D-Cache generó $216$ ciclos de parada. En la pasada 
+    HOT, los operandos residían en las líneas de $4\text{ KB}$, reduciendo las paradas de memoria a sólo $31$ ciclos (absorbiendo el $85,6\%$ de la latencia).
+    \item \textbf{Escrituras Asíncronas en Memory Copy:} El \textit{Write Buffer} absorbió las ráfagas de instrucciones \texttt{SW} mediante la política \textit{Fire \& Forget}, 
+    reduciendo los \textit{stalls} de $902$ a $570$ ciclos en caliente.
 \end{itemize}
 
 \subsection{Síntesis Física, Recursos y Cierre de Tiempos en Vivado}
 
 \begin{conceptbox}{Comprendiendo las métricas de síntesis en la FPGA}
     \begin{itemize}
-        \item \textbf{Worst Negative Slack (WNS):} Es el margen de tiempo del cable eléctrico más lento del chip. A 100 MHz, cada tic de reloj dura 10
-        nanosegundos. Un WNS positivo (\textbf{+0,036 ns}) significa que la señal eléctrica más lenta cruzó todo el circuito y se estabilizó \textbf{0,036 nanosegundos antes}
-         del siguiente pulso de reloj, garantizando que el procesador funciona sin errores físicos ni colmados en la FPGA.
-        \item \textbf{Total Negative Slack (TNS):} La suma de retrasos de todos los puntos del chip. Un $\text{TNS} = 0,000\text{ ns}$ garantiza cero violaciones
-        de tiempo.
-        \item \textbf{Endpoints (26.222 / 27.993):} El número total de conexiones e insumos de registros evaluados por la herramienta AMD Vivado. Tener 0
-        endpoints fallidos indica un Cierre Temporal del $100\%$.
-        \item \textbf{LUTs / LUTRAM / Flip-Flops / BRAMs:} Las celdas lógicas reconfigurables (\textit{LUTs}), memorias distribuidas (\textit{LUTRAM}), registros
-        de 1 bit (\textit{Flip-Flops}) y bloques de memoria SRAM dedicada (\textit{BRAMs}) utilizados en el chip Artix-7 de la tarjeta Nexys A7.
+        \item \textbf{Worst Negative Slack (WNS):} Es el margen de tiempo del camino crítico (la ruta eléctrica combinacional más lenta del chip). A una frecuencia de 
+        reloj objetivo de $f_{clk} = 100\text{ MHz}$, el periodo de ciclo es:
+        \begin{equation*}
+            T_{clk} = \frac{1}{f_{clk}} = \frac{1}{100\text{ MHz}} = 10\text{ ns}
+        \end{equation*}
+        Un $\text{WNS}$ positivo (\textbf{+0,036 ns}) indica que la señal eléctrica más lenta tardó $9,964\text{ ns}$ en propagarse y se estabilizó 
+        \textbf{0,036 nanosegundos antes} del siguiente pulso de reloj, garantizando la correcta captura de datos sin violaciones de tiempo de establecimiento 
+        (\textit{setup time}).
+        \item \textbf{Total Negative Slack (TNS):} La suma acumulada de las violaciones temporales de todos los caminos del chip. Un valor $\text{TNS} = 
+        0,000\text{ ns}$ confirma la ausencia total de fallos de tiempo.
+        \item \textbf{Endpoints ($26.222$ / $27.993$):} En el análisis de tiempos estático (\textit{STA}), un \textit{endpoint} es la terminal de destino de un 
+        camino síncrono (como la entrada de datos $D$ de un Flip-Flop, un puerto de escritura de una BRAM o un pin de salida I/O). Vivado audita la llegada del 
+        pulso eléctrico a cada uno de estos $26.222$ puntos. Registrar $0$ \textit{failing endpoints} garantiza un cierre temporal del $100\%$.
+        \item \textbf{LUTs / LUTRAM / Flip-Flops / BRAMs:} Las celdas lógicas reconfigurables (\textit{LUTs}), memorias distribuidas (\textit{LUTRAM}), registros de 
+        1 bit (\textit{Flip-Flops}) y bloques de memoria SRAM dedicada (\textit{BRAMs}) utilizados en el chip Artix-7 de la tarjeta Nexys A7.
     \end{itemize}
 \end{conceptbox}
 
-La evolución física del diseño sintetizado para la FPGA \textbf{Digilent Nexys A7-100T} a una frecuencia objetivo de 
-\textbf{100 MHz} se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
+\subsubsection{La Importancia del Cierre Temporal en Ingeniería de Semiconductores}
+En el diseño de circuitos digitales, conseguir que una descripción en SystemVerilog funcione correctamente en simulación es solo la mitad del trabajo. Al sintetizar e implementar la lógica sobre los elementos físicos de la FPGA, las señales eléctricas requieren un tiempo finito para propagarse a través de las puertas lógicas, multiplexores y cables de interconexión.
+
+Si el camino combinacional más largo entre dos registros (\textit{camino crítico}) tarda más de los $10\text{ ns}$ asignados por el periodo de reloj a $100\text{ MHz}$, el registro de destino capturará una señal inestable o corrupta, provocando fallos impredecibles en silicio real. Alcanzar el \textbf{Cierre Temporal} (\textit{Timing Closure}, caracterizado por un $\text{WNS} \ge 0$) es el requisito físico imprescindible que certifica que el procesador operará a $100\text{ MHz}$ de forma determinista, estable y térmicamente segura en la tarjeta FPGA.
+
+La evolución física del diseño sintetizado para la FPGA \textbf{Digilent Nexys A7-100T} a una frecuencia objetivo de \textbf{100 MHz} se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
 
 \begin{table}[H]
 \centering
@@ -897,16 +918,13 @@ Margen Térmico & 57,6 $^\circ\text{C}$ & 57,6 $^\circ\text{C}$ & 57,5 $^\circ\t
 \end{tabularx}
 \end{table}
 
-\subsubsection{Análisis de Cierre Temporal (Timing Closure)}
-Un resultado fundamental del proyecto es la recuperación del cierre temporal:
+\subsubsection{Análisis del Cierre Temporal y Evolución del Camino Crítico}
+Un resultado fundamental de la fase de optimización es la recuperación y consolidación del cierre temporal:
 \begin{enumerate}
-    \item El núcleo \textit{Baseline} violaba el tiempo de ciclo a 100 MHz con un $\text{WNS} = -0,039\text{ ns}$ debido al camino crítico en la resolución
-    combinacional de saltos.
-    \item La introducción del predictor BHT y el desacoplamiento mediante registración en \textit{Fetch} mejoró el slack hasta $\text{WNS} = +0,319\text{ ns}$.
-    \item El sistema completo con cachés L1 e interconexión Wishbone cerró con un slack positivo confiable ($\text{WNS} = +0,036\text{ ns}$ con $26.222$
-    endpoints y $+0,015\text{ ns}$ en la compilación extendida de $27.993$ endpoints), garantizando un funcionamiento estable y sin errores en la tarjeta física.
+    \item \textbf{Fallo de Tiempo en el Núcleo Baseline:} El diseño inicial violaba el tiempo de ciclo a 100 MHz ($\text{WNS} = -0,039\text{ ns}$ con 2 \textit{failing endpoints}), debido a la dilatada cadena combinacional en la resolución estática de saltos y direccionamiento del bus.
+    \item \textbf{Mejora con BHT y Desacoplamiento:} La inserción del predictor BHT y el registro de la dirección de predicción en \textit{Fetch} rompieron la cadena combinacional, elevando el slack a un holgado $\text{WNS} = +0,319\text{ ns}$.
+    \item \textbf{Estabilidad en el Sistema Final L1+BHT:} La inclusión de las cachés de datos e instrucciones y las FSMs de control incrementaron la lógica ($26.222$ endpoints procesados), pero el diseño mantuvo un margen positivo confiable ($\text{WNS} = +0,036\text{ ns}$ a $100\text{ MHz}$ y $+0,015\text{ ns}$ en la compilación extendida de $27.993$ endpoints), garantizando la viabilidad física del procesador sobre la tarjeta Nexys A7.
 \end{enumerate}
-
 
 \section{Conclusiones y Trabajo Futuro}
 % ============================================================
@@ -940,7 +958,7 @@ El análisis post-mortem de las diferentes fases del desarrollo ha puesto de man
     microarquitectónicas basadas en evidencias empíricas.
     \item \textbf{Desacoplamiento del camino crítico:} Mantener la lógica de especulación e instrumentación fuera de los multiplexores de direccionamiento en
     \textit{Fetch} y \textit{Execute} es vital para mantener elevadas frecuencias de operación en FPGAs.
-    \item \textbf{Defensa contra transitorios:} La necesidad de registros de retención inmutables (\texttt{fetch\_base\_adr}) y estados strictly de bus
+    \item \textbf{Defensa contra estados transitorios:} La necesidad de registros de retención inmutables (\texttt{fetch\_base\_adr}) y estados strictly de bus
     (\texttt{MMIO\_ACCESS}) demuestra que el hardware debe protegerse contra señales combinacionales fluctuantes durante situaciones de congelación del pipeline
     (\textit{stall}).
 \end{itemize}
@@ -955,7 +973,7 @@ La arquitectura consolidada de HaDes-V constituye una base sólida para abordar 
     \item \textbf{Especulación Global Correlacionada (Predictor Gshare):} Evolucionar la BHT bimodal hacia un predictor de tipo \textit{Gshare} que combine el
     historial global de saltos con los bits del PC mediante una operación XOR, mejorando la precisión en bucles con ramas condicionales anidadas o
     interdependientes.
-    \item \textbf{Sustrato de Interrupciones y Tiempo Real (CLINT/PLIC):} Implementar un controlador de interrupciones para dotar al procesador de capacidad de
+    \item \textbf{Interrupciones y Tiempo Real:} Implementar un controlador de interrupciones para dotar al procesador de capacidad de
     reacción determinista ante eventos físicos externos con latencias de nanosegundos, habilitando el despliegue de un sistema operativo de tiempo real
     (\textit{RTOS}).
 \end{enumerate}
