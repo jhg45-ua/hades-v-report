@@ -39,10 +39,10 @@
 
 % Configuración de márgenes
 \geometry{
-    top=2.5cm,
+    top=2.0cm,
     bottom=2.5cm,
-    left=2cm,
-    right=2cm,
+    left=1.5cm,
+    right=1.5cm,
     headheight=14.5pt
 }
 
@@ -151,14 +151,15 @@
     implementar un núcleo docente escalar de 32 bits conforme a la especificación libre \textbf{RISC-V (RV32I)} con segmentación de 5 etapas, se diseñó e integró un 
     sistema de especulación de control compuesto por un predictor de saltos dinámico bimodal (\textit{Branch History Table} - BHT) de $4096$ entradas con contadores 
     saturantes  de 2 bits y un acelerador de saltos incondicionales (\textit{JAL Bypass}). Posteriormente, se resolvió el «Muro de la Memoria» mediante una jerarquía 
-    L1 en **Arquitectura Harvard Modificada**, incorporando una caché de instrucciones (I-Cache), una caché de datos de 4 KB (D-Cache), un \textit{Write Buffer} asíncrono
+    L1 en \textbf{Arquitectura Harvard Modificada}, incorporando una caché de instrucciones (I-Cache), una caché de datos de 4 KB (D-Cache), un \textit{Write Buffer} asíncrono
     con política \textit{Fire \& Forget} y una línea de invalidación por hardware para mantener la coherencia de código mediante la instrucción \texttt{FENCE.I}.
     La telemetría en hardware mediante contadores de rendimiento (HPCs) en la etapa de \textit{Writeback} permitió validar un incremento de rendimiento del $63,8\%$ 
     (elevando el IPC de $0,506$ a $0,829$) y eliminar hasta un $85,6\%$ de las paradas de memoria. El procesador fue sintetizado en la FPGA 
     \textbf{Digilent Nexys A7-100T} (Xilinx Artix-7) alcanzando un cierre de tiempos positivo (\text{WNS} $= +0,036\text{ ns}$) a una frecuencia de reloj de 
-    **100 MHz**.
+    \textbf{100 MHz}.
 \end{abstract}
 
+\newpage
 \tableofcontents
 \newpage
 
@@ -185,10 +186,15 @@ Para comprender el punto de partida sin perderse en tecnicismos y siglas, es imp
 
 \subsection{Motivaciones para la mejora del diseño base: Los Muros del Control y de la Memoria}
 
-\begin{conceptbox}{¿Por qué se frena un procesador?}
-    Imagina un coche de carreras de gran potencia. De nada sirve su motor si en cada cruce de carreteras tiene que frenar a cero para preguntar qué camino tomar 
-    (\textbf{Muro del Control}), o si cada 10 metros debe detenerse durante varios minutos a esperar a que un camión cisterna lento le traiga combustible desde 
-    una gasolinera lejana (\textbf{Muro de la Memoria}). En un procesador, las tuberías de cómputo sufren exactamente estos dos frenos.
+\begin{conceptbox}{El Límite del Rendimiento en Procesadores Escalares}
+    En un procesador segmentado ideal, el objetivo es completar una instrucción por ciclo de reloj ($CPI_{ideal} = 1.0$). Sin embargo, el rendimiento real está limitado por la suma de penalizaciones:
+    \begin{equation*}
+        CPI_{real} = CPI_{ideal} + CPI_{control} + CPI_{memoria}
+    \end{equation*}
+    \begin{itemize}
+        \item \textbf{$CPI_{control}$ (Muro del Control):} Ciclos desperdiciados vaciando la tubería (\textit{flushes}) tras calcular tarde la dirección de un salto.
+        \item \textbf{$CPI_{memoria}$ (Muro de la Memoria):} Ciclos en los que la CPU se congela (\textit{stalls}) esperando la respuesta de la RAM principal.
+    \end{itemize}
 \end{conceptbox}
 
 En un procesador segmentado clásico de 5 etapas (\textit{Fetch}, \textit{Decode}, \textit{Execute}, \textit{Memory}, \textit{Writeback}), la ejecución avanza 
@@ -198,7 +204,7 @@ como una cadena de montaje. Sin embargo, en el diseño base de HaDes-V surgían 
     \item \textbf{El Muro del Control (Saltos Condicionales):} La dirección a la que debe saltar un bucle (como un \texttt{for} o un \texttt{if}) no se calcula
     hasta la 3.ª etapa (\textit{Execute}). Sin un mecanismo de predicción, la CPU asumía de forma estática que el salto nunca se tomaría
     (\textit{Predict Not-Taken}). Si la suposición fallaba, el procesador debía vaciar o purgar (\textit{flush}) las dos instrucciones cargadas por error en la
-    tubería, tirando a la basura **2 ciclos de reloj** por cada salto.
+    tubería, tirando a la basura \textbf{2 ciclos de reloj} por cada salto.
     \item \textbf{El Muro de la Memoria (Latencia de RAM):} Las instrucciones de lectura (\texttt{LW}) y escritura (\texttt{SW}) deben comunicarse con la memoria
     RAM principal a través del bus del sistema. Mientras la memoria principal responde, la CPU debe congelar la segmentación (\textit{stall}), perdiendo valiosos
     ciclos en los que no se realiza cómputo útil.
@@ -213,7 +219,7 @@ Para superar ambos muros, en este trabajo se diseñaron e implementaron sobre el
     sin alterar el camino crítico.
     \item \textbf{Especulación de Control (BHT y JAL Bypass):} Creación de una tabla de historial de saltos (\textit{Branch History Table} - BHT) de $4096$
     entradas con contadores saturantes de 2 bits que predice la dirección de los bucles en la etapa de \textit{Fetch}, junto con un decodificador rápido que
-    resuelve las llamadas a funciones (\texttt{JAL}) a coste de **0 ciclos de penalización**.
+    resuelve las llamadas a funciones (\texttt{JAL}) a coste de \textbf{0 ciclos de penalización}.
     \item \textbf{Jerarquía de Memoria L1 (Harvard Modificada) y Coherencia:} Separación en dos memorias caché ultrarrápidas de mapeo directo (I-Cache para
     instrucciones y D-Cache de 4 KB para datos), complementadas con un \textit{Write Buffer} asíncrono para escrituras y una línea de invalidación por hardware 
     activada mediante la instrucción \texttt{FENCE.I} para evitar el problema del «código zombie» al cargar programas vía UART.
@@ -272,7 +278,7 @@ proporcionaba un flujo de trabajo compuesto por:
 
 Si bien la práctica estaba originalmente planteada para ser ejecutada sobre placas FPGA Digilent Basys 3, para este trabajo contamos con la cesión por parte 
 de la \textbf{Universidad de Alicante} de una placa de desarrollo de mayores prestaciones, la \textbf{Digilent Nexys A7-100T} (con chip 
-\textbf{Xilinx Artix-7 XC7A100T-1CSG324C}), lo que nos permitió sintetizar y validar el procesador a una frecuencia de reloj objetivo de **100 MHz** sin problema alguno.
+\textbf{Xilinx Artix-7 XC7A100T-1CSG324C}), lo que nos permitió sintetizar y validar el procesador a una frecuencia de reloj objetivo de \textbf{100 MHz} sin problema alguno.
 
 
 \section{Diseño Microarquitectónico e Innovaciones}
@@ -284,7 +290,7 @@ de la \textbf{Universidad de Alicante} de una placa de desarrollo de mayores pre
 
 \subsubsection{Motivación y Necesidad de Observabilidad}
 \begin{conceptbox}{¿Por qué colocar contadores en el propio chip?}
-    Medir el tiempo total que tarda un programa en ejecutarse con un cronómetro externo no explica **por qué** un procesador es lento. Se necesita un «termómetro de 
+    Medir el tiempo total que tarda un programa en ejecutarse con un cronómetro externo no explica \textbf{por qué} un procesador es lento. Se necesita un «termómetro de 
     silicio» dentro del chip capaz de contar exactamente cuántos ciclos se han dedicado a calcular, cuántos se han perdido esperando a la memoria RAM y cuántos se 
     han tirado a la basura por fallar en la predicción de un salto.
 \end{conceptbox}
@@ -295,7 +301,7 @@ núcleo base HaDes-V fue un subsistema de \textbf{Contadores de Rendimiento de H
 
 Los HPCs se ubicaron estratégicamente en la \textbf{última etapa de la segmentación: Writeback (WB)}. En esta etapa, las instrucciones ya han sido resueltas y 
 confirmadas de forma inmutable (\textit{retired instructions}). La instrumentación en WB procesa exclusivamente señales registradas, desacoplando la lógica de 
-telemetría de los multiplexores críticos de las etapas previas para proteger la meta de los **100 MHz** en la FPGA.
+telemetría de los multiplexores críticos de las etapas previas para proteger la meta de los \textbf{100 MHz} en la FPGA.
 
 El subsistema monitoriza en tiempo real las siguientes métricas:
 \begin{itemize}
@@ -569,9 +575,9 @@ del bus, trayendo un bloque contiguo desde la RAM principal.
 \subsubsection{Write Buffer Asíncrono y Enrutamiento MMIO}
 Para mitigar la latencia en las operaciones de escritura (\texttt{STORE}), se interpuso un \textbf{Write Buffer} (cola FIFO asíncrona de 2 entradas) a la
 salida de la D-Cache. Bajo la política de diseño \textit{"Fire \& Forget"}, cuando la CPU ejecuta una instrucción \texttt{SW}, deposita el dato en la FIFO
-("deja la carta en el buzón") y continúa su ejecución en **0 ciclos de parada**, mientras el buffer drena los datos hacia la RAM en segundo plano.
+("deja la carta en el buzón") y continúa su ejecución en \textbf{0 ciclos de parada}, mientras el buffer drena los datos hacia la RAM en segundo plano.
 
-Asimismo, el sistema integra un **Enrutador MMIO** (\textit{Memory-Mapped I/O}). Las direcciones destinadas a periféricos (como los contadores HPCs, LEDs o
+Asimismo, el sistema integra un \textbf{Enrutador MMIO} (\textit{Memory-Mapped I/O}). Las direcciones destinadas a periféricos (como los contadores HPCs, LEDs o
 el puerto serie UART) son desviadas directamente evitando la caché de datos, previniendo la contaminación o corrupción de las líneas de caché.
 
 \subsubsection{Coherencia de Instrucciones mediante FENCE.I}
@@ -786,12 +792,12 @@ Aplicando la penalización fija de $2$ ciclos por error de especulación:
     \text{Ciclos Teóricos Esperados} = 50.314 - 19.596 = 30.718 \text{ ciclos}
 \end{equation}
 
-El contador de hardware capturó exactamente **$30.718$ ciclos** en la versión BHT pura, confirmando el determinismo absoluto del hardware y elevando el IPC de
+El contador de hardware capturó exactamente \textbf{$30.718$ ciclos} en la versión BHT pura, confirmando el determinismo absoluto del hardware y elevando el IPC de
 $0,506$ a $0,829$.
 
 \subsubsection{Análisis de Aliasing y Capacidad: BHT 1K vs. BHT 4K}
 Durante la fase de optimización se evaluó experimentalmente el escalado de la BHT desde $1.024$ ($1\text{K}$) hasta $4.096$ ($4\text{K}$) entradas. En la suite
-de pruebas completa, ambas configuraciones arrojaron recuentos de ciclos y purgas **estrictamente idénticos** ($101$ flushes en \textit{Bubble Sort HOT}, $1$
+de pruebas completa, ambas configuraciones arrojaron recuentos de ciclos y purgas \textbf{estrictamente idénticos} ($101$ flushes en \textit{Bubble Sort HOT}, $1$
 flush en \textit{Memory Copy HOT} y $126$ flushes en \textit{Fibonacci HOT}).
 
 Este comportamiento se explica porque los programas empaquetados presentan un conjunto de trabajo (\textit{working set}) con pocas instrucciones de salto activas
@@ -805,7 +811,7 @@ Desde el punto de vista del hardware:
 \end{itemize}
 
 Dado que la BHT de $4\text{K}$ cuatriplica el consumo de recursos de memoria interna en la FPGA sin aportar ni un solo ciclo de mejora en el rendimiento, se
-determinó que la configuración de **$1.024$ entradas representa el punto óptimo de diseño** (\textit{sweet spot}), maximizando la eficiencia de área sin
+determinó que la configuración de \textbf{$1.024$ entradas representa el punto óptimo de diseño} (\textit{sweet spot}), maximizando la eficiencia de área sin
 comprometer la precisión especulativa.
 
 \subsubsection{Eficiencia del Subsistema L1 y Absorción de Latencias}
@@ -840,8 +846,8 @@ Fibonacci   & COLD $\to$ HOT & $875 \to 875$ (Estable) \\
 \begin{conceptbox}{Comprendiendo las métricas de síntesis en la FPGA}
     \begin{itemize}
         \item \textbf{Worst Negative Slack (WNS):} Es el margen de tiempo del cable eléctrico más lento del chip. A 100 MHz, cada tic de reloj dura 10
-        nanosegundos. Un WNS positivo (\textbf{+0,036 ns}) significa que la señal eléctrica más lenta cruzó todo el circuito y se estabilizó **0,036 nanosegundos
-        antes** del siguiente pulso de reloj, garantizando que el procesador funciona sin errores físicos ni colmados en la FPGA.
+        nanosegundos. Un WNS positivo (\textbf{+0,036 ns}) significa que la señal eléctrica más lenta cruzó todo el circuito y se estabilizó \textbf{0,036 nanosegundos antes}
+         del siguiente pulso de reloj, garantizando que el procesador funciona sin errores físicos ni colmados en la FPGA.
         \item \textbf{Total Negative Slack (TNS):} La suma de retrasos de todos los puntos del chip. Un $\text{TNS} = 0,000\text{ ns}$ garantiza cero violaciones
         de tiempo.
         \item \textbf{Endpoints (26.222 / 27.993):} El número total de conexiones e insumos de registros evaluados por la herramienta AMD Vivado. Tener 0
@@ -852,7 +858,7 @@ Fibonacci   & COLD $\to$ HOT & $875 \to 875$ (Estable) \\
 \end{conceptbox}
 
 La evolución física del diseño sintetizado para la FPGA \textbf{Digilent Nexys A7-100T} a una frecuencia objetivo de 
-**100 MHz** se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
+\textbf{100 MHz} se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
 
 \begin{table}[H]
 \centering
@@ -895,7 +901,7 @@ Un resultado fundamental del proyecto es la recuperación del cierre temporal:
 \subsection{Síntesis de Logros y Cumplimiento de Objetivos}
 En el marco del \textit{Community Challenge with HaDes-V}, este trabajo ha transformado un núcleo
 procesador docente básico de 5 etapas en un microcontrolador de mayor rendimiento, validado e implementado físicamente sobre la FPGA 
-\textbf{Digilent Nexys A7-100T} a una frecuencia de reloj de **100 MHz**.
+\textbf{Digilent Nexys A7-100T} a una frecuencia de reloj de \textbf{100 MHz}.
 
 A lo largo del proyecto se han alcanzado los siguientes hitos fundamentales:
 \begin{enumerate}
@@ -909,7 +915,7 @@ A lo largo del proyecto se han alcanzado los siguientes hitos fundamentales:
     mediante la implementación de una línea de invalidación síncrona activada por la instrucción estándar \texttt{FENCE.I}.
     \item \textbf{Telemetría Transparente y Cierre Temporal:} La ubicación estratégica de los contadores HPCs en la etapa de \textit{Writeback} permitió auditar
     con precisión el rendimiento del núcleo sin degradar el camino crítico, garantizando un cierre de tiempos positivo (\text{WNS} $= +0,036\text{ ns}$) a
-    $100\text{ MHz}$.
+    \textbf{100\text{ MHz}}.
 \end{enumerate}
 
 \subsection{Lecciones de Ingeniería RTL}
