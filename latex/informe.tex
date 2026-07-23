@@ -303,13 +303,22 @@ Los HPCs se ubicaron estratégicamente en la \textbf{última etapa de la segment
 confirmadas de forma inmutable (\textit{retired instructions}). La instrumentación en WB procesa exclusivamente señales registradas, desacoplando la lógica de 
 telemetría de los multiplexores críticos de las etapas previas para proteger la meta de los \textbf{100 MHz} en la FPGA.
 
-El subsistema monitoriza en tiempo real las siguientes métricas:
+El subsistema monitoriza en tiempo real y clasifica en la etapa de retiro (\textit{Writeback}) las siguientes métricas registradas en los contadores CSR de 64 bits:
+
 \begin{itemize}
-    \item \textbf{\texttt{CYCLE}:} Recuento total de ciclos de reloj transcurridos.
-    \item \textbf{\texttt{INSTRUCTION}:} Número de instrucciones efectivamente completadas con éxito.
-    \item \textbf{\texttt{STALL}:} Ciclos en los que la ruta de datos permanece congelada por latencia del bus o dependencias de datos.
-    \item \textbf{\texttt{FLUSH}:} Ocurrencias de purga en la tubería por saltos mal predichos.
-    \item \textbf{\texttt{BRANCH} / \texttt{MISPREDICT}:} Evaluación de instrucciones de salto condicional y recuento de errores de especulación.
+    \item \textbf{\texttt{mcycle} (\texttt{CSR 0xB00}):} Recuento total de ciclos de reloj de ejecución.
+    \item \textbf{\texttt{minstret} (\texttt{CSR 0xB02}):} Número de instrucciones válidas retiradas con éxito (sin excepciones).
+    \item \textbf{\texttt{mhpmcounter3} (\texttt{CSR 0xB03}):} Purgas del pipeline por errores de predicción de salto (\textit{Flushes}).
+    \item \textbf{\texttt{mhpmcounter4} (\texttt{CSR 0xB04}):} Ciclos de parada acumulados por la CPU (\textit{Stalls}).
+    \item \textbf{\texttt{mhpmcounter5} (\texttt{CSR 0xB05}):} Transacciones activas sobre el bus de memoria.
+    \item \textbf{\texttt{mhpmcounter6} (\texttt{CSR 0xB06}):} Fallos de caché de instrucciones L1 (\textit{I-Cache Misses}).
+    \item \textbf{\texttt{mhpmcounter7} (\texttt{CSR 0xB07}):} Instrucciones de carga de datos (\texttt{LOADs}: \texttt{LW, LH, LB, LHU, LBU}).
+    \item \textbf{\texttt{mhpmcounter8} (\texttt{CSR 0xB08}):} Instrucciones de almacenamiento (\texttt{STOREs}: \texttt{SW, SH, SB}).
+    \item \textbf{\texttt{mhpmcounter9} (\texttt{CSR 0xB09}):} Operaciones aritmético-lógicas completadas (\texttt{ALU}).
+    \item \textbf{\texttt{mhpmcounter10} (\texttt{CSR 0xB0A}):} Saltos incondicionales ejecutados (\texttt{JUMPs}: \texttt{JAL, JALR}).
+    \item \textbf{\texttt{mhpmcounter11} (\texttt{CSR 0xB0B}):} Saltos condicionales evaluados (\texttt{BRANCHES}: \texttt{BEQ, BNE, BLT, BGE}, etc.).
+    \item \textbf{\texttt{mhpmcounter13} (\texttt{CSR 0xB0D}):} Accesos a memoria desalineados (\textit{Misaligned LOAD/STORE}).
+    \item \textbf{\texttt{mhpmcounter14} (\texttt{CSR 0xB0E}):} Excepciones, interrupciones y trampas de control (\textit{Traps / EXC}).
 \end{itemize}
 
 \subsubsection{Interfaz de Software mediante CSRs y Control del Efecto Observador}
@@ -350,94 +359,100 @@ este fallo puntual degradando el estado de \textit{Strongly Taken} a \textit{Wea
 \shorthandoff{<>}
 \begin{figure}[H]
 \centering
+
 \begin{subfigure}[b]{0.52\textwidth}
 \centering
 \begin{tikzpicture}[scale=0.82, every node/.style={transform shape}]
-    % 1. Registro PC (32 bits)
-    \draw[thick] (0,4.6) rectangle (7.5,5.3);
-    \draw[thick] (2.2,4.6) -- (2.2,5.3);
-    \draw[thick] (6.0,4.6) -- (6.0,5.3);
-    
-    \node at (1.1,4.95) {\tiny PC[31:12]};
-    \node at (4.1,4.95) {\textbf{\small PC[11:2]}};
-    \node at (6.75,4.95) {\tiny PC[1:0]};
-    
-    \node[above] at (1.1,5.3) {\tiny Ignorados};
-    \node[above, color=blue!80!black] at (4.1,5.3) {\textbf{\tiny ÍNDICE BHT (10 bits)}};
-    \node[above] at (6.75,5.3) {\tiny \texttt{2'b00}};
+% 1. Registro PC (32 bits)
+\draw[thick] (0,4.6) rectangle (7.5,5.3);
+\draw[thick] (2.2,4.6) -- (2.2,5.3);
+\draw[thick] (6.0,4.6) -- (6.0,5.3);
+\node at (1.1,4.95) {\tiny PC[31:12]};
+\node at (4.1,4.95) {\textbf{\small PC[11:2]}};
+\node at (6.75,4.95) {\tiny PC[1:0]};
+\node[above] at (1.1,5.3) {\tiny Ignorados};
+\node[above, color=blue!80!black] at (4.1,5.3) {\textbf{\tiny ÍNDICE BHT (10 bits)}};
+\node[above] at (6.75,5.3) {\tiny \texttt{2'b00}};
 
-    % Flecha del Índice hacia la columna de Entrada
-    \draw[->,very thick,blue!80!black] (2.7,4.6) -- (2.7,3.4) node[midway,left] {\tiny Selecciona Fila};
+% Flecha del Índice hacia la columna de Entrada
+\draw[->,very thick,blue!80!black] (2.7,4.6) -- (2.7,3.4) node[midway,left] {\tiny Selecciona Fila};
 
-    % 2. Tabla BHT (2 Columnas Explícitas)
-    \draw[thick, fill=gray!25] (1.2,3.0) rectangle (6.8,3.4);
-    \node at (2.7,3.2) {\textbf{\tiny Entrada / Índice}};
-    \node at (5.4,3.2) {\textbf{\tiny Estado (2 bits)}};
-    \draw[thick] (4.1,3.0) -- (4.1,3.4);
+% 2. Tabla BHT (2 Columnas Explícitas)
+\draw[thick, fill=gray!25] (1.2,3.0) rectangle (6.8,3.4);
+\node at (2.7,3.2) {\textbf{\tiny Entrada / Índice}};
+\node at (5.4,3.2) {\textbf{\tiny Estado (2 bits)}};
+\draw[thick] (4.1,3.0) -- (4.1,3.4);
 
-    % Cuerpo de la Tabla
-    \draw[thick, fill=gray!5] (1.2,0.2) rectangle (6.8,3.0);
-    \draw[thick] (4.1,0.2) -- (4.1,3.0);
+% Cuerpo de la Tabla
+\draw[thick, fill=gray!5] (1.2,0.2) rectangle (6.8,3.0);
+\draw[thick] (4.1,0.2) -- (4.1,3.0);
 
-    % Filas de la BHT
-    \draw (1.2,2.5) -- (6.8,2.5);
-    \node at (2.65,2.75) {\tiny \texttt{0x000} (Entrada 0)};
-    \node at (5.45,2.75) {\tiny \texttt{01} (Weakly NT)};
+% Filas de la BHT
+\draw (1.2,2.5) -- (6.8,2.5);
+\node at (2.65,2.75) {\tiny \texttt{0x000} (Entrada 0)};
+\node at (5.45,2.75) {\tiny \texttt{01} (Weakly NT)};
 
-    \draw (1.2,2.0) -- (6.8,2.0);
-    \node at (2.65,2.25) {\tiny \texttt{0x001} (Entrada 1)};
-    \node at (5.45,2.25) {\tiny \texttt{11} (Strongly T)};
+\draw (1.2,2.0) -- (6.8,2.0);
+\node at (2.65,2.25) {\tiny \texttt{0x001} (Entrada 1)};
+\node at (5.45,2.25) {\tiny \texttt{11} (Strongly T)};
 
-    \node at (2.65,1.7) {\tiny \dots};
-    \node at (5.45,1.7) {\tiny \dots};
+\node at (2.65,1.7) {\tiny \dots};
+\node at (5.45,1.7) {\tiny \dots};
 
-    % Fila Seleccionada (Highlighted)
-    \draw[fill=blue!15, thick] (1.2,1.0) rectangle (6.8,1.4);
-    \draw[thick] (4.1,1.0) -- (4.1,1.4);
-    \node at (2.65,1.2) {\textbf{\tiny Índice PC[11:2]}};
-    \node at (5.45,1.2) {\textbf{\tiny \texttt{10} (Weakly T)}};
+% Fila Seleccionada (Highlighted)
+\draw[fill=blue!15, thick] (1.2,1.0) rectangle (6.8,1.4);
+\draw[thick] (4.1,1.0) -- (4.1,1.4);
+\node at (2.65,1.2) {\textbf{\tiny Índice PC[11:2]}};
+\node at (5.45,1.2) {\textbf{\tiny \texttt{10} (Weakly T)}};
 
-    \node at (2.65,0.7) {\tiny \dots};
-    \node at (5.45,0.7) {\tiny \dots};
+\node at (2.65,0.7) {\tiny \dots};
+\node at (5.45,0.7) {\tiny \dots};
 
-    \draw (1.2,0.6) -- (6.8,0.6);
-    \node at (2.65,0.4) {\tiny \texttt{0x3FF} (Entrada 1023)};
-    \node at (5.45,0.4) {\tiny \texttt{00} (Strongly NT)};
+\draw (1.2,0.6) -- (6.8,0.6);
+\node at (2.65,0.4) {\tiny \texttt{0x3FF} (Entrada 1023)};
+\node at (5.45,0.4) {\tiny \texttt{00} (Strongly NT)};
 
-    % Salida de Predicción
-    \draw[->,very thick,red!80!black] (6.8,1.2) -- (8.0,1.2) node[right, align=left] {\textbf{\tiny Predicción}\\[-2pt]\tiny (MSB = 1 $\rightarrow$ Taken)};
+% Salida de Predicción
+\draw[->,very thick,red!80!black] (6.8,1.2) -- (8.0,1.2) node[right, align=left] {\textbf{\footnotesize Predicción}\\[-2pt]\footnotesize (MSB = 1 $\rightarrow$ Taken)};
 \end{tikzpicture}
 \caption{Indexación y lectura en dos columnas de la BHT.}
 \label{fig:bht_index}
-\end{subfigure}
-\hfill
+\end{subfigure}%
+\hfill%
 \begin{subfigure}[b]{0.45\textwidth}
 \centering
-\begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=1.65cm,
-  thick,main node/.style={circle,draw,align=center,font=\sffamily\tiny\bfseries,minimum size=1.0cm}]
+\begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,
+thick,main node/.style={circle,draw,align=center,font=\sffamily\tiny\bfseries,minimum size=1.0cm}]
 
-  \node[main node, fill=red!15] (00) {\texttt{00}\\[-2pt]\tiny SNT};
-  \node[main node, fill=orange!20] (01) [right of=00] {\texttt{01}\\[-2pt]\tiny WNT};
-  \node[main node, fill=yellow!20] (10) [right of=01] {\texttt{10}\\[-2pt]\tiny WT};
-  \node[main node, fill=green!20] (11) [right of=10] {\texttt{11}\\[-2pt]\tiny ST};
+% Nodos con colores
+\node[main node, fill=red!15] (00) at (0,0) {\texttt{00}\\[-2pt]\tiny SNT};
+\node[main node, fill=orange!20] (01) at (0,2.5) {\texttt{01}\\[-2pt]\tiny WNT};
+\node[main node, fill=yellow!20] (10) at (2.5,2.5) {\texttt{10}\\[-2pt]\tiny WT};
+\node[main node, fill=green!20] (11) at (2.5,0) {\texttt{11}\\[-2pt]\tiny ST};
 
-  \path[every node/.style={font=\sffamily\tiny}]
-    (00) edge[loop left] node{NT} (00)
-         edge[bend left] node{T} (01)
-    (01) edge[bend left] node{NT} (00)
-         edge[bend left] node{T} (10)
-    (10) edge[bend left] node{NT} (01)
-         edge[bend left] node{T} (11)
-    (11) edge[bend left] node{NT} (10)
-         edge[loop right] node{T} (11);
+% Transiciones (con curvas)
+\path[every node/.style={font=\sffamily\tiny}]
+% Bucles
+(00) edge[loop left] node{NT} (00)
+(11) edge[loop right] node{T} (11)
+% Horizontales y Verticales curvadas
+(00) edge[bend left] node{T} (01)
+(01) edge[bend left] node{NT} (00)
+% FIXED HORIZONTAL TOP ARROWS: Use standard bend left to curve them symmetrically
+(01) edge[bend left] node{T} (10)
+(10) edge[bend left] node{NT} (01)
+% Verticales
+(10) edge[bend right] node{T} (11)
+(11) edge[bend right] node{NT} (10);
 \end{tikzpicture}
 \caption{Transiciones del contador saturante de 2 bits.}
 \label{fig:bht_fsm}
 \end{subfigure}
+
 \caption{Estructura interna de la tabla BHT y autómata de estados del predictor.}
 \label{fig:bht_complete_diagram}
 \end{figure}
-\shorthandon{<>}
+\shorthandon{<>} 
 
 El funcionamiento en el cauce de instrucciones se ilustra en la Figura \ref{fig:bht_complete_diagram}:
 \begin{enumerate}
