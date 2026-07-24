@@ -1,4 +1,4 @@
-name: Compilar LaTeX y Desplegar GitHub Pages
+name: Compilar LaTeX, Convertir a Markdown y Desplegar Web
 
 on:
   push:
@@ -16,30 +16,40 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      # 2. Compilar LaTeX indicando la carpeta de trabajo
+      # 2. Compilar LaTeX a PDF con XeLaTeX
       - name: Compilar LaTeX
         uses: xu-cheng/latex-action@v3
         with:
           root_file: latex/informe.tex
-          work_in_root_file_dir: true    # <--- Entra a la carpeta latex/ para compilar
+          work_in_root_file_dir: true
           latexmk_use_xelatex: true
           args: "-pdf -file-line-error -interaction=nonstopmode"
 
-      # 3. Mover el PDF resultante de forma segura
-      - name: Preparar PDF para la web
+      # 3. Copiar PDF compilado a los assets de la web
+      - name: Preparar PDF para descarga
         run: |
           mkdir -p docs/assets
           if [ -f "latex/informe.pdf" ]; then
             cp latex/informe.pdf docs/assets/HaDes_V_Informe_Tecnico.pdf
           elif [ -f "informe.pdf" ]; then
             cp informe.pdf docs/assets/HaDes_V_Informe_Tecnico.pdf
-          else
-            echo "Error: No se encontró informe.pdf"
-            find . -name "*.pdf"
-            exit 1
           fi
 
-      # 4. Configurar Python e instalar MkDocs Material
+      # 4. Instalar Pandoc y convertir LaTeX a Markdown automáticamente
+      - name: Convertir LaTeX a Markdown para la Web
+        run: |
+          sudo apt-get update && sudo apt-get install -y pandoc
+          mkdir -p docs
+
+          # Inyectar botón de descarga en la cabecera del Markdown generado
+          echo '!!! info "Descargar Informe Técnico Completo (PDF)"' > docs/index.md
+          echo '    :material-file-pdf-box: **[Descargar HaDes_V_Informe_Tecnico.pdf](assets/HaDes_V_Informe_Tecnico.pdf)**' >> docs/index.md
+          echo '' >> docs/index.md
+
+          # Transpilar LaTeX -> Markdown
+          pandoc latex/informe.tex -f latex -t markdown-smart --mathjax >> docs/index.md
+
+      # 5. Configurar Python e instalar MkDocs Material
       - name: Instalar Python y MkDocs
         uses: actions/setup-python@v5
         with:
@@ -49,7 +59,7 @@ jobs:
         run: |
           pip install mkdocs-material
 
-      # 5. Generar la web y desplegar en la rama 'gh-pages'
+      # 6. Generar el sitio web y desplegar en GitHub Pages
       - name: Desplegar en GitHub Pages
         run: |
           mkdocs gh-deploy --force

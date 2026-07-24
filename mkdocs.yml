@@ -26,9 +26,15 @@ theme:
     - content.code.copy
 
 nav:
-  - Inicio: index.md
+  - Memoria Técnica: index.md
 
 markdown_extensions:
   - admonition
   - pymdownx.details
   - pymdownx.superfences
+  - tables
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
