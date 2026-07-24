@@ -1,0 +1,46 @@
+name: Compilar LaTeX y Desplegar GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Obtener el código fuente
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      # 2. Compilar LaTeX a PDF
+      # NOTA: Ajusta 'root_file' según dónde esté tu .tex (ej. 'main.tex' o 'latex/main.tex')
+      - name: Compilar LaTeX
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: latex/informe.tex
+          args: "-pdf -file-line-error -interaction=nonstopmode"
+
+      # 3. Mover el PDF resultante a la carpeta de assets de MkDocs
+      - name: Preparar PDF para la web
+        run: |
+          mkdir -p docs/assets
+          cp latex/informe.pdf docs/assets/HaDes_V_Informe_Tecnico.pdf
+
+      # 4. Configurar Python e instalar MkDocs Material
+      - name: Instalar Python y MkDocs
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Instalar MkDocs Material
+        run: |
+          pip install mkdocs-material
+
+      # 5. Generar la web y desplegar en la rama 'gh-pages'
+      - name: Desplegar en GitHub Pages
+        run: |
+          mkdocs gh-deploy --force

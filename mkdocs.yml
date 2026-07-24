@@ -1,0 +1,34 @@
+site_name: "HaDes-V: Informe Técnico de Arquitectura"
+site_description: "Procesador RISC-V (RV32I)"
+site_author: "Julián Hinojosa Gil"
+
+theme:
+  name: material
+  language: es
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Cambiar a modo oscuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Cambiar a modo claro
+  features:
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+
+nav:
+  - Inicio: index.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
