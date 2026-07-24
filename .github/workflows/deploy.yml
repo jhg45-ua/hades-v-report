@@ -16,20 +16,28 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      # 2. Compilar LaTeX a PDF
-      # NOTA: Ajusta 'root_file' según dónde esté tu .tex (ej. 'main.tex' o 'latex/main.tex')
+      # 2. Compilar LaTeX indicando la carpeta de trabajo
       - name: Compilar LaTeX
         uses: xu-cheng/latex-action@v3
         with:
           root_file: latex/informe.tex
-          latexmk_use_xelatex: true   # <--- AÑADE ESTA LÍNEA
+          work_in_root_file_dir: true    # <--- Entra a la carpeta latex/ para compilar
+          latexmk_use_xelatex: true
           args: "-pdf -file-line-error -interaction=nonstopmode"
 
-      # 3. Mover el PDF resultante a la carpeta de assets de MkDocs
+      # 3. Mover el PDF resultante de forma segura
       - name: Preparar PDF para la web
         run: |
           mkdir -p docs/assets
-          cp latex/informe.pdf docs/assets/HaDes_V_Informe_Tecnico.pdf
+          if [ -f "latex/informe.pdf" ]; then
+            cp latex/informe.pdf docs/assets/HaDes_V_Informe_Tecnico.pdf
+          elif [ -f "informe.pdf" ]; then
+            cp informe.pdf docs/assets/HaDes_V_Informe_Tecnico.pdf
+          else
+            echo "Error: No se encontró informe.pdf"
+            find . -name "*.pdf"
+            exit 1
+          fi
 
       # 4. Configurar Python e instalar MkDocs Material
       - name: Instalar Python y MkDocs
