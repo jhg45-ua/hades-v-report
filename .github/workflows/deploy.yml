@@ -41,49 +41,43 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y pandoc pdf2svg texlive-latex-extra texlive-pictures wget python3
 
-      # 5. Convertir cajas tcolorbox (conceptbox/bugbox/insightbox) a cajas de MkDocs Material
-      - name: Preprocesar cajas personalizadas y tablas
+      # 5. Preprocesar LaTeX (Marcado de cajas y tablas)
+      - name: Preprocesar LaTeX
         run: |
-          python3 -c '
+          cat << 'EOF' > preprocess_latex.py
           import re
 
           with open("latex/informe.tex", "r", encoding="utf-8") as f:
               content = f.read()
 
-          # 1. Eliminar comandos de Babel que interfieren con TikZ en Pandoc
-          content = content.replace("\\shorthandoff{<>}", "").replace("\\shorthandon{<>}", "")
+          # Eliminar comandos Babel de llaves complejas que interfieren en Pandoc
+          content = content.replace(r"\shorthandoff{<>}", "").replace(r"\shorthandon{<>}", "")
 
-          # 2. Convertir tabularx a tabular estándar para tablas limpias en Markdown
+          # Convertir tabularx a tabular estándar
           content = re.sub(r"\\begin\{tabularx\}\{.*?\}\{(.*?)\}", r"\\begin{tabular}{\1}", content)
-          content = content.replace("\\end{tabularx}", "\\end{tabular}")
+          content = content.replace(r"\end{tabularx}", r"\end{tabular}")
 
-          # 3. Convertir conceptbox -> !!! info "Idea Clave: Titulo"
-          def fix_concept(m):
-              title, body = m.group(1), m.group(2).strip()
-              body_ind = "\n".join("    " + line for line in body.splitlines())
-              return f"\n\n!!! info \"Idea Clave: {title}\"\n{body_ind}\n\n"
+          # Reemplazar entornos de tcolorbox por marcas temporales
+          def mark_concept(m):
+              return f"\n\nBEGINMKDOCSINFO_{m.group(1).strip()}\n{m.group(2)}\nENDMKDOCSBOX\n\n"
 
-          # 4. Convertir bugbox -> !!! warning "Bug: Titulo"
-          def fix_bug(m):
-              title, body = m.group(1), m.group(2).strip()
-              body_ind = "\n".join("    " + line for line in body.splitlines())
-              return f"\n\n!!! warning \"Bug: {title}\"\n{body_ind}\n\n"
+          def mark_bug(m):
+              return f"\n\nBEGINMKDOCSWARN_{m.group(1).strip()}\n{m.group(2)}\nENDMKDOCSBOX\n\n"
 
-          # 5. Convertir insightbox -> !!! success "Resultado: Titulo"
-          def fix_insight(m):
-              title, body = m.group(1), m.group(2).strip()
-              body_ind = "\n".join("    " + line for line in body.splitlines())
-              return f"\n\n!!! success \"Resultado: {title}\"\n{body_ind}\n\n"
+          def mark_insight(m):
+              return f"\n\nBEGINMKDOCSSUCC_{m.group(1).strip()}\n{m.group(2)}\nENDMKDOCSBOX\n\n"
 
-          content = re.sub(r"\\begin\{conceptbox\}\{(.*?)\}(.*?)\\end\{conceptbox\}", fix_concept, content, flags=re.DOTALL)
-          content = re.sub(r"\\begin\{bugbox\}\{(.*?)\}(.*?)\\end\{bugbox\}", fix_bug, content, flags=re.DOTALL)
-          content = re.sub(r"\\begin\{insightbox\}\{(.*?)\}(.*?)\\end\{insightbox\}", fix_insight, content, flags=re.DOTALL)
+          content = re.sub(r"\\begin\{conceptbox\}\{(.*?)\}(.*?)\\end\{conceptbox\}", mark_concept, content, flags=re.DOTALL)
+          content = re.sub(r"\\begin\{bugbox\}\{(.*?)\}(.*?)\\end\{bugbox\}", mark_bug, content, flags=re.DOTALL)
+          content = re.sub(r"\\begin\{insightbox\}\{(.*?)\}(.*?)\\end\{insightbox\}", mark_insight, content, flags=re.DOTALL)
 
           with open("latex/informe_web.tex", "w", encoding="utf-8") as f:
               f.write(content)
-          '
+          EOF
 
-      # 6. Descargar filtro de TikZ y generar Markdown + SVGs
+          python3 preprocess_latex.py
+
+      # 6. Convertir LaTeX a Markdown y renderizar TikZ a SVG
       - name: Convertir LaTeX a Markdown (con TikZ a SVG)
         run: |
           mkdir -p docs/assets
@@ -96,12 +90,7 @@ jobs:
           # Descargar filtro Lua oficial para convertir TikZ a SVG
           wget https://raw.githubusercontent.com/pandoc-ext/tikz/main/tikz.lua -O tikz.lua
 
-          # Cabecera con botón de descarga del PDF
-          echo '!!! info "Descargar Informe Técnico Completo (PDF)"' > docs/index.md
-          echo '    :material-file-pdf-box: **[Descargar HaDes_V_Informe_Tecnico.pdf](assets/HaDes_V_Informe_Tecnico.pdf)**' >> docs/index.md
-          echo '' >> docs/index.md
-
-          # Transpilar a Markdown procesando TikZ a SVG
+          # Generar archivo Markdown crudo
           pandoc latex/informe_web.tex \
             -f latex \
             -t markdown-smart+pipe_tables+grid_tables+raw_html \
@@ -109,12 +98,49 @@ jobs:
             --metadata=tikz-format:svg \
             --mathjax \
             --resource-path=.:latex:img:latex/img \
-            >> docs/index.md
+            -o docs/content_raw.md
 
-          # Mover los gráficos SVG de TikZ generados a la carpeta web
+          # Mover gráficos SVG generados por TikZ a la carpeta de la web
           mv *.svg docs/ 2>/dev/null || true
 
-      # 7. Configurar Python e instalar MkDocs Material
+      # 7. Postprocesar Markdown (Crear cajas estilizadas de MkDocs Material)
+      - name: Postprocesar Markdown para MkDocs
+        run: |
+          cat << 'EOF' > postprocess_md.py
+          import re
+
+          with open("docs/content_raw.md", "r", encoding="utf-8") as f:
+              text = f.read()
+
+          # Cabecera interactiva con botón de descarga del PDF
+          header = '!!! info "Descargar Informe Técnico Completo (PDF)"\n'
+          header += '    :material-file-pdf-box: **[Descargar HaDes_V_Informe_Tecnico.pdf](assets/HaDes_V_Informe_Tecnico.pdf)**\n\n'
+
+          def convert_box(match):
+              box_type = match.group(1)
+              title = match.group(2).strip()
+              body = match.group(3).strip()
+
+              adm_type = "info"
+              if box_type == "WARN":
+                  adm_type = "warning"
+              elif box_type == "SUCC":
+                  adm_type = "success"
+
+              indented_body = "\n".join("    " + line for line in body.splitlines())
+              return f'\n\n!!! {adm_type} "{title}"\n{indented_body}\n\n'
+
+          # Transformar las marcas temporales en cajas Admonition de MkDocs
+          pattern = r'BEGINMKDOCS(INFO|WARN|SUCC)_(.*?)\n(.*?)ENDMKDOCSBOX'
+          processed_text = re.sub(pattern, convert_box, text, flags=re.DOTALL)
+
+          with open("docs/index.md", "w", encoding="utf-8") as f:
+              f.write(header + processed_text)
+          EOF
+
+          python3 postprocess_md.py
+
+      # 8. Configurar Python e instalar MkDocs Material
       - name: Instalar Python y MkDocs
         uses: actions/setup-python@v5
         with:
@@ -124,7 +150,7 @@ jobs:
         run: |
           pip install mkdocs-material
 
-      # 8. Desplegar sitio web final
+      # 9. Desplegar sitio web final
       - name: Desplegar en GitHub Pages
         run: |
           mkdocs gh-deploy --force
