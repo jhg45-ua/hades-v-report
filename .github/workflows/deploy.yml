@@ -35,29 +35,34 @@ jobs:
             cp informe.pdf docs/assets/HaDes_V_Informe_Tecnico.pdf
           fi
 
-      # 4. Instalar herramientas para renderizar TikZ y Pandoc
+      # 4. Instalar herramientas de conversión (Pandoc, XeLaTeX y pdf2svg)
       - name: Instalar dependencias de conversión web
         run: |
           sudo apt-get update
-          sudo apt-get install -y pandoc pdf2svg texlive-latex-extra texlive-pictures wget python3
+          sudo apt-get install -y pandoc pdf2svg texlive-latex-base texlive-latex-extra texlive-pictures texlive-xetex python3
 
-      # 5. Preprocesar LaTeX (Marcado de cajas y tablas)
+      # 5. Preprocesar LaTeX (Convertir TikZ a SVG, formatear tablas y cajas)
       - name: Preprocesar LaTeX
         run: |
           cat << 'EOF' > preprocess_latex.py
           import re
+          import subprocess
+          import os
+
+          os.makedirs("docs", exist_ok=True)
+          os.makedirs("docs/img", exist_ok=True)
 
           with open("latex/informe.tex", "r", encoding="utf-8") as f:
               content = f.read()
 
-          # Eliminar comandos Babel de llaves complejas que interfieren en Pandoc
+          # Eliminar comandos Babel de llaves complejas
           content = content.replace(r"\shorthandoff{<>}", "").replace(r"\shorthandon{<>}", "")
 
           # Convertir tabularx a tabular estándar
           content = re.sub(r"\\begin\{tabularx\}\{.*?\}\{(.*?)\}", r"\\begin{tabular}{\1}", content)
           content = content.replace(r"\end{tabularx}", r"\end{tabular}")
 
-          # Reemplazar entornos de tcolorbox por marcas temporales
+          # Marcar entornos de tcolorbox
           def mark_concept(m):
               return f"\n\nBEGINMKDOCSINFO_{m.group(1).strip()}\n{m.group(2)}\nENDMKDOCSBOX\n\n"
 
@@ -71,40 +76,65 @@ jobs:
           content = re.sub(r"\\begin\{bugbox\}\{(.*?)\}(.*?)\\end\{bugbox\}", mark_bug, content, flags=re.DOTALL)
           content = re.sub(r"\\begin\{insightbox\}\{(.*?)\}(.*?)\\end\{insightbox\}", mark_insight, content, flags=re.DOTALL)
 
+          # Compilar figuras TikZ individualmente a SVG vectorial
+          tikz_count = 0
+          def process_tikz(m):
+              global tikz_count
+              tikz_code = m.group(0)
+              tikz_count += 1
+              filename = f"tikz_fig_{tikz_count}"
+              
+              standalone_tex = f"""\\documentclass[tikz,border=5pt]{{standalone}}
+          \\usetikzlibrary{{shapes.geometric, arrows, positioning, calc}}
+          \\begin{{document}}
+          {tikz_code}
+          \\end{{document}}
+          """
+              tex_file = f"{filename}.tex"
+              pdf_file = f"{filename}.pdf"
+              svg_file = f"docs/{filename}.svg"
+
+              with open(tex_file, "w", encoding="utf-8") as tf:
+                  tf.write(standalone_tex)
+
+              try:
+                  subprocess.run(["xelatex", "-interaction=nonstopmode", tex_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                  subprocess.run(["pdf2svg", pdf_file, svg_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                  
+                  # Limpieza de temporales
+                  for ext in [".tex", ".pdf", ".aux", ".log", ".xdv"]:
+                      if os.path.exists(f"{filename}{ext}"):
+                          os.remove(f"{filename}{ext}")
+                  
+                  return f"\\\\includegraphics{{{filename}.svg}}"
+              except Exception as e:
+                  print(f"Aviso al procesar TikZ {filename}: {e}")
+                  return tikz_code
+
+          content = re.sub(r"\\begin\{tikzpicture\}.*?\\end\{tikzpicture\}", process_tikz, content, flags=re.DOTALL)
+
           with open("latex/informe_web.tex", "w", encoding="utf-8") as f:
               f.write(content)
           EOF
 
           python3 preprocess_latex.py
 
-      # 6. Convertir LaTeX a Markdown y renderizar TikZ a SVG
-      - name: Convertir LaTeX a Markdown (con TikZ a SVG)
+      # 6. Convertir LaTeX preprocesado a Markdown con Pandoc
+      - name: Convertir LaTeX a Markdown
         run: |
-          mkdir -p docs/assets
-          mkdir -p docs/img
-
           # Copiar imágenes estáticas
           if [ -d "img" ]; then cp -r img/* docs/ 2>/dev/null || true; cp -r img/* docs/img/ 2>/dev/null || true; fi
           if [ -d "latex/img" ]; then cp -r latex/img/* docs/ 2>/dev/null || true; cp -r latex/img/* docs/img/ 2>/dev/null || true; fi
 
-          # Descargar filtro Lua oficial para convertir TikZ a SVG
-          wget https://raw.githubusercontent.com/pandoc-ext/tikz/main/tikz.lua -O tikz.lua
-
-          # Generar archivo Markdown crudo
           pandoc latex/informe_web.tex \
             -f latex \
             -t markdown-smart+pipe_tables+grid_tables+raw_html \
-            --lua-filter=tikz.lua \
-            --metadata=tikz-format:svg \
             --mathjax \
-            --resource-path=.:latex:img:latex/img \
+            --resource-path=.:latex:img:latex/img:docs \
             -o docs/content_raw.md
 
-          # Mover gráficos SVG generados por TikZ a la carpeta de la web
-          mv *.svg docs/ 2>/dev/null || true
-
-      # 7. Postprocesar Markdown (Crear cajas estilizadas de MkDocs Material)
-      - name: Postprocesar Markdown para MkDocs
+      # 7. Postprocesar Markdown (Crear cajas estilizadas para MkDocs Material)
+      - name: Postprocesar Markdown
         run: |
           cat << 'EOF' > postprocess_md.py
           import re
@@ -112,7 +142,7 @@ jobs:
           with open("docs/content_raw.md", "r", encoding="utf-8") as f:
               text = f.read()
 
-          # Cabecera interactiva con botón de descarga del PDF
+          # Cabecera con enlace al PDF compilado
           header = '!!! info "Descargar Informe Técnico Completo (PDF)"\n'
           header += '    :material-file-pdf-box: **[Descargar HaDes_V_Informe_Tecnico.pdf](assets/HaDes_V_Informe_Tecnico.pdf)**\n\n'
 
@@ -130,7 +160,6 @@ jobs:
               indented_body = "\n".join("    " + line for line in body.splitlines())
               return f'\n\n!!! {adm_type} "{title}"\n{indented_body}\n\n'
 
-          # Transformar las marcas temporales en cajas Admonition de MkDocs
           pattern = r'BEGINMKDOCS(INFO|WARN|SUCC)_(.*?)\n(.*?)ENDMKDOCSBOX'
           processed_text = re.sub(pattern, convert_box, text, flags=re.DOTALL)
 
@@ -140,7 +169,7 @@ jobs:
 
           python3 postprocess_md.py
 
-      # 8. Configurar Python e instalar MkDocs Material
+      # 8. Instalar MkDocs Material
       - name: Instalar Python y MkDocs
         uses: actions/setup-python@v5
         with:
@@ -150,7 +179,7 @@ jobs:
         run: |
           pip install mkdocs-material
 
-      # 9. Desplegar sitio web final
+      # 9. Desplegar en GitHub Pages
       - name: Desplegar en GitHub Pages
         run: |
           mkdocs gh-deploy --force
