@@ -1,4 +1,4 @@
-name: Compilar LaTeX, Convertir a Markdown y Desplegar Web
+name: Compilar LaTeX, TikZ, Cajas y Desplegar Web
 
 on:
   push:
@@ -16,8 +16,8 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      # 2. Compilar LaTeX a PDF con XeLaTeX
-      - name: Compilar LaTeX
+      # 2. Compilar PDF oficial con XeLaTeX
+      - name: Compilar LaTeX a PDF
         uses: xu-cheng/latex-action@v3
         with:
           root_file: latex/informe.tex
@@ -25,8 +25,8 @@ jobs:
           latexmk_use_xelatex: true
           args: "-pdf -file-line-error -interaction=nonstopmode"
 
-      # 3. Copiar PDF compilado a los assets de la web
-      - name: Preparar PDF para descarga
+      # 3. Copiar PDF compilado para descarga web
+      - name: Preparar PDF para la web
         run: |
           mkdir -p docs/assets
           if [ -f "latex/informe.pdf" ]; then
@@ -35,21 +35,86 @@ jobs:
             cp informe.pdf docs/assets/HaDes_V_Informe_Tecnico.pdf
           fi
 
-      # 4. Instalar Pandoc y convertir LaTeX a Markdown automáticamente
-      - name: Convertir LaTeX a Markdown para la Web
+      # 4. Instalar herramientas para renderizar TikZ y Pandoc
+      - name: Instalar dependencias de conversión web
         run: |
-          sudo apt-get update && sudo apt-get install -y pandoc
-          mkdir -p docs
+          sudo apt-get update
+          sudo apt-get install -y pandoc pdf2svg texlive-latex-extra texlive-pictures wget python3
 
-          # Inyectar botón de descarga en la cabecera del Markdown generado
+      # 5. Convertir cajas tcolorbox (conceptbox/bugbox/insightbox) a cajas de MkDocs Material
+      - name: Preprocesar cajas personalizadas y tablas
+        run: |
+          python3 -c '
+          import re
+
+          with open("latex/informe.tex", "r", encoding="utf-8") as f:
+              content = f.read()
+
+          # 1. Eliminar comandos de Babel que interfieren con TikZ en Pandoc
+          content = content.replace("\\shorthandoff{<>}", "").replace("\\shorthandon{<>}", "")
+
+          # 2. Convertir tabularx a tabular estándar para tablas limpias en Markdown
+          content = re.sub(r"\\begin\{tabularx\}\{.*?\}\{(.*?)\}", r"\\begin{tabular}{\1}", content)
+          content = content.replace("\\end{tabularx}", "\\end{tabular}")
+
+          # 3. Convertir conceptbox -> !!! info "Idea Clave: Titulo"
+          def fix_concept(m):
+              title, body = m.group(1), m.group(2).strip()
+              body_ind = "\n".join("    " + line for line in body.splitlines())
+              return f"\n\n!!! info \"Idea Clave: {title}\"\n{body_ind}\n\n"
+
+          # 4. Convertir bugbox -> !!! warning "Bug: Titulo"
+          def fix_bug(m):
+              title, body = m.group(1), m.group(2).strip()
+              body_ind = "\n".join("    " + line for line in body.splitlines())
+              return f"\n\n!!! warning \"Bug: {title}\"\n{body_ind}\n\n"
+
+          # 5. Convertir insightbox -> !!! success "Resultado: Titulo"
+          def fix_insight(m):
+              title, body = m.group(1), m.group(2).strip()
+              body_ind = "\n".join("    " + line for line in body.splitlines())
+              return f"\n\n!!! success \"Resultado: {title}\"\n{body_ind}\n\n"
+
+          content = re.sub(r"\\begin\{conceptbox\}\{(.*?)\}(.*?)\\end\{conceptbox\}", fix_concept, content, flags=re.DOTALL)
+          content = re.sub(r"\\begin\{bugbox\}\{(.*?)\}(.*?)\\end\{bugbox\}", fix_bug, content, flags=re.DOTALL)
+          content = re.sub(r"\\begin\{insightbox\}\{(.*?)\}(.*?)\\end\{insightbox\}", fix_insight, content, flags=re.DOTALL)
+
+          with open("latex/informe_web.tex", "w", encoding="utf-8") as f:
+              f.write(content)
+          '
+
+      # 6. Descargar filtro de TikZ y generar Markdown + SVGs
+      - name: Convertir LaTeX a Markdown (con TikZ a SVG)
+        run: |
+          mkdir -p docs/assets
+          mkdir -p docs/img
+
+          # Copiar imágenes estáticas
+          if [ -d "img" ]; then cp -r img/* docs/ 2>/dev/null || true; cp -r img/* docs/img/ 2>/dev/null || true; fi
+          if [ -d "latex/img" ]; then cp -r latex/img/* docs/ 2>/dev/null || true; cp -r latex/img/* docs/img/ 2>/dev/null || true; fi
+
+          # Descargar filtro Lua oficial para convertir TikZ a SVG
+          wget https://raw.githubusercontent.com/pandoc-ext/tikz/main/tikz.lua -O tikz.lua
+
+          # Cabecera con botón de descarga del PDF
           echo '!!! info "Descargar Informe Técnico Completo (PDF)"' > docs/index.md
           echo '    :material-file-pdf-box: **[Descargar HaDes_V_Informe_Tecnico.pdf](assets/HaDes_V_Informe_Tecnico.pdf)**' >> docs/index.md
           echo '' >> docs/index.md
 
-          # Transpilar LaTeX -> Markdown
-          pandoc latex/informe.tex -f latex -t markdown-smart --mathjax >> docs/index.md
+          # Transpilar a Markdown procesando TikZ a SVG
+          pandoc latex/informe_web.tex \
+            -f latex \
+            -t markdown-smart+pipe_tables+grid_tables+raw_html \
+            --lua-filter=tikz.lua \
+            --metadata=tikz-format:svg \
+            --mathjax \
+            --resource-path=.:latex:img:latex/img \
+            >> docs/index.md
 
-      # 5. Configurar Python e instalar MkDocs Material
+          # Mover los gráficos SVG de TikZ generados a la carpeta web
+          mv *.svg docs/ 2>/dev/null || true
+
+      # 7. Configurar Python e instalar MkDocs Material
       - name: Instalar Python y MkDocs
         uses: actions/setup-python@v5
         with:
@@ -59,7 +124,7 @@ jobs:
         run: |
           pip install mkdocs-material
 
-      # 6. Generar el sitio web y desplegar en GitHub Pages
+      # 8. Desplegar sitio web final
       - name: Desplegar en GitHub Pages
         run: |
           mkdocs gh-deploy --force
