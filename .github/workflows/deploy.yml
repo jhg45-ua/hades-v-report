@@ -22,6 +22,7 @@ jobs:
         uses: xu-cheng/latex-action@v3
         with:
           root_file: latex/informe.tex
+          latexmk_use_xelatex: true
           args: "-pdf -file-line-error -interaction=nonstopmode"
 
       # 3. Mover el PDF resultante a la carpeta de assets de MkDocs
