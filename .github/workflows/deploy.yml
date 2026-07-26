@@ -22,6 +22,7 @@ jobs:
         uses: xu-cheng/latex-action@v3
         with:
           root_file: latex/informe.tex
+          work_in_root_file_dir: true
           latexmk_use_xelatex: true
           args: "-pdf -file-line-error -interaction=nonstopmode"
 
