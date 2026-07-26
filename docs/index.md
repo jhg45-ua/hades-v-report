@@ -2,10 +2,8 @@
 
 Bienvenido a la documentación oficial del procesador **HaDes-V**, un microcontrolador basado en la arquitectura de conjunto de instrucciones **RISC-V (RV32I)**, sintetizado e implementado físicamente sobre la FPGA Xilinx Artix-7 (Nexys A7-100T).
 
-!!! info "Descargar Informe Técnico Completo (PDF)"
-    La memoria técnica formal compilada en LaTeX está disponible para su consulta y descarga directa:
-
-    :material-file-pdf-box: **[Descargar HaDes_V_Informe_Tecnico.pdf](assets/HaDes_V_Informe_Tecnico.pdf)**
+!!! info "Descargar Memoria Técnica Oficial (PDF)"
+    :material-file-pdf-box: **[Descargar Informe Técnico de HaDes-V (v2.0)](assets/HaDes_V_Informe_Tecnico.pdf)**
 
 ---
 
