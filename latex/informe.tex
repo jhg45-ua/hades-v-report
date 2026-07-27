@@ -27,6 +27,8 @@
 \usepackage{tabularx}
 \usepackage{array}
 \newcolumntype{L}{>{\raggedright\arraybackslash}X} % Columna X alineada a la izquierda
+\newcolumntype{C}{>{\centering\arraybackslash}X} % Columna X centrada
+
 
 % Diagramas
 \usepackage{tikz}
@@ -237,8 +239,8 @@ Para superar ambos muros, en este trabajo se diseñaron e implementaron sobre el
 
 \subsection{Estructura de la Memoria}
 El resto de este informe se organiza como sigue: El \textbf{Capítulo 2} detalla el contexto del desafío organizado por RISC-V International y la arquitectura
-inicial. El \textbf{Capítulo 3} explica el diseño detallado de la BHT, las cachés L1 y la telemetría. El \textbf{Capítulo 4} expone el análisis forense de
-depuración (\textit{Post-Mortem}) analizando 7 fallos reales de hardware. El \textbf{Capítulo 5} presenta la evaluación cuantitativa de rendimiento sobre los
+inicial. El \textbf{Capítulo 3} explica el diseño detallado de la BHT, las cachés L1 y la telemetría. El \textbf{Capítulo 4} expone el análisis (\textit{Post-Mortem}) 
+del desarrollo, analizando fallos reales de hardware. El \textbf{Capítulo 5} presenta la evaluación cuantitativa de rendimiento sobre los
 microbenchmarks y los resultados de síntesis en la FPGA. Finalmente, el \textbf{Capítulo 6} sintetiza las conclusiones y el trabajo futuro.
 
 
@@ -250,13 +252,13 @@ microbenchmarks y los resultados de síntesis en la FPGA. Finalmente, el \textbf
 \subsection{El Community Challenge with HaDes-V}
 Este proyecto se ha desarrollado en el marco del \textit{Community Challenge with HaDes-V}, promovido por la organización global \textbf{RISC-V International} y
 organizado por el grupo de Arquitecturas y Sistemas Empotrados de la \textbf{Universidad Tecnológica de Graz (TU Graz)}. La iniciativa busca fomentar el
-aprendizaje práctico en el diseño y optimización de procesadores de código abierto.
+aprendizaje práctico en el diseño y optimización de procesadores.
 
 El reto proponía a los participantes implementar primero una base común sobre un diseño de núcleo docente y, una vez completada esa línea base, diseñar e
 integrar cualquier tipo de mejora microarquitectónica, en el caso de este proyecto, para maximizar su rendimiento y eficiencia.
 
 \subsection{Arquitectura de Partida}
-El núcleo base utilizado es \textbf{HaDes-V}, una plataforma desarrollada con fines docentes que implementa una arquitectura escalar de 32 bits conforme a la
+El diseño base utilizado es \textbf{HaDes-V}, una plataforma desarrollada con fines docentes que implementa una arquitectura escalar de 32 bits conforme a la
 especificación estándar \textbf{RISC-V (RV32I)}, con un nivel de privilegio exclusivo de Modo Máquina (\textit{M-Mode}).
 
 El núcleo de partida organiza su ruta de datos en una segmentación clásica de 5 etapas:
@@ -286,7 +288,7 @@ proporcionaba un flujo de trabajo compuesto por:
     comunicándose por enlace serie UART.
 \end{itemize}
 
-Si bien la práctica estaba originalmente planteada para ser ejecutada sobre placas FPGA Digilent Basys 3, para este trabajo contamos con la cesión por parte 
+Si bien el proyecto estaba originalmente planteado para ser ejecutado sobre placas FPGA Digilent Basys 3, para este trabajo contamos con la cesión por parte 
 de la \textbf{Universidad de Alicante} de una placa de desarrollo de mayores prestaciones, la \textbf{Digilent Nexys A7-100T} (con chip 
 \textbf{Xilinx Artix-7 XC7A100T-1CSG324C}), lo que nos permitió sintetizar y validar el procesador a una frecuencia de reloj objetivo de \textbf{100 MHz} sin problema alguno.
 
@@ -300,9 +302,9 @@ de la \textbf{Universidad de Alicante} de una placa de desarrollo de mayores pre
 
 \subsubsection{Motivación y Necesidad de Observabilidad}
 \begin{conceptbox}{¿Por qué colocar contadores en el propio chip?}
-    Medir el tiempo total que tarda un programa en ejecutarse con un cronómetro externo no explica \textbf{por qué} un procesador es lento. Se necesita un «termómetro de 
-    silicio» dentro del chip capaz de contar exactamente cuántos ciclos se han dedicado a calcular, cuántos se han perdido esperando a la memoria RAM y cuántos se 
-    han tirado a la basura por fallar en la predicción de un salto.
+    Medir el tiempo total que tarda un programa en ejecutarse con un cronómetro externo no explica \textbf{por qué} un procesador es lento. Se necesita un «sistema
+    de telemetría integrado» dentro del chip capaz de contar exactamente cuántos ciclos se han dedicado a calcular, cuántos se han perdido esperando a la memoria RAM 
+    y cuántos se han tirado a la basura por fallar en la predicción de un salto.
 \end{conceptbox}
 
 Antes de integrar cualquier característica nueva como el predictor de saltos o memorias caché, necesitábamos una manera de saber de forma determinista y exacta 
@@ -311,7 +313,7 @@ núcleo base HaDes-V fue un subsistema de \textbf{Contadores de Rendimiento de H
 
 Los HPCs se ubicaron estratégicamente en la \textbf{última etapa de la segmentación: Writeback (WB)}. En esta etapa, las instrucciones ya han sido resueltas y 
 confirmadas de forma inmutable (\textit{retired instructions}). La instrumentación en WB procesa exclusivamente señales registradas, desacoplando la lógica de 
-telemetría de los multiplexores críticos de las etapas previas para proteger la meta de los \textbf{100 MHz} en la FPGA.
+telemetría de los multiplexores críticos de las etapas previas para no penalizar el rendimiento de la FPGA.
 
 El subsistema monitoriza en tiempo real y clasifica en la etapa de retiro (\textit{Writeback}) las siguientes métricas registradas en los contadores CSR de 64 bits:
 
@@ -337,7 +339,7 @@ Para que el software pueda leer estas métricas sin sondas externas, los contado
 (\textit{CSR Read}).
 
 Al volcar la telemetría al final de la ejecución de una carga de trabajo, surge el conocido \textit{Efecto Observador}: la propia rutina encargada de leer 
-los contadores e imprimirlos por pantalla incrementa el recuento total de instrucciones. En nuestro harness de evaluación, esta sobrecarga consiste en un 
+los contadores e imprimirlos por pantalla incrementa el recuento total de instrucciones. En nuestro conjunto de pruebas, esta sobrecarga consiste en un 
 bloque fijo y determinista de exactamente \textbf{11 instrucciones \texttt{csrr}} al término del programa. Al conocer con precisión matemática esta constante, 
 es posible restar $11$ al recuento para aislar el trabajo neto del algoritmo evaluado sin introducir distorsiones.
 
@@ -354,110 +356,111 @@ interna indexada por los bits inferiores de la dirección del Contador de Progra
 el historial reciente de cada instrucción de salto utilizando un contador de 2 bits con cuatro estados posibles:
 
 \begin{itemize}
-    \item \texttt{00} (\textit{Strongly Not-Taken} (SNT)): Predice fuertemente que el salto NO se tomará y por tanto no se tomará.
-    \item \texttt{01} (\textit{Weakly Not-Taken} (WNT)): Predice que el salto NO se tomará.
-    \item \texttt{10} (\textit{Weakly Taken} (WT)): Predice que el salto SÍ se tomará.
-    \item \texttt{11} (\textit{Strongly Taken} (ST)): Predice fuertemente que el salto SÍ se tomará y por tanto se tomará.
+    \item \texttt{00} (\textit{Strongly Not-Taken} (SNT)): Predice no tomar el salto con máxima confianza; requiere dos fallos consecutivos para cambiar la tendencia 
+    a «Tomado».
+    \item \texttt{01} (\textit{Weakly Not-Taken} (WNT)): Predice no tomar el salto con baja confianza; un único fallo cambia la tendencia a «Tomado».
+    \item \texttt{10} (\textit{Weakly Taken} (WT)): Predice tomar el salto con baja confianza; un único fallo conmuta la tendencia a «No Tomado».
+    \item \texttt{11} (\textit{Strongly Taken} (ST)): Predice tomar el salto con máxima confianza; amortigua el fallo puntual de salida de un bucle.
 \end{itemize}
 
-La clave técnica de emplear 2 bits frente a un predictor de 1 bit radica en la \textbf{histéresis}. Es decir, en un bucle que se repite muchas veces (ej. 100 iteraciones),
-la última iteración siempre fallará (ya que el bucle termina y el salto no se toma). Un predictor de 1 bit cambiaría su estado inmediatamente a "No Tomado",
-volviendo a fallar en la primera iteración de la siguiente ejecución del bucle. El contador saturante de 2 bits actúa como el margen de un termostato: amortigua
-este fallo puntual degradando el estado de \textit{Strongly Taken} a \textit{Weakly Taken}, manteniendo la predicción correcta para futuras ejecuciones.
+La ventaja fundamental de utilizar un contador de 2 bits frente a un predictor simple de 1 bit reside en la propiedad de \textbf{histéresis} (inercia de estado). En
+algoritmos con bucles iterativos frecuentes, la última iteración del bucle siempre falla al evaluar la condición de salida. Mientras que un predictor de 1 bit
+cambiaría inmediatamente su predicción a «No Tomado» —provocando un segundo fallo inevitable al reingresar al bucle—, el contador saturante de 2 bits amortigua este
+evento aislado: el primer fallo únicamente degrada el nivel de confianza de \textit{Strongly Taken} a \textit{Weakly Taken}, conservando la predicción correcta para
+las futuras ejecuciones del bucle.
 
 % Figura: Diagrama de la BHT y el autómata de estados
 \shorthandoff{<>}
 \begin{figure}[H]
 \centering
 
-\begin{subfigure}[b]{0.52\textwidth}
-\centering
-\begin{tikzpicture}[scale=0.82, every node/.style={transform shape}]
-% 1. Registro PC (32 bits)
-\draw[thick] (0,4.6) rectangle (7.5,5.3);
-\draw[thick] (2.2,4.6) -- (2.2,5.3);
-\draw[thick] (6.0,4.6) -- (6.0,5.3);
-\node at (1.1,4.95) {\tiny PC[31:12]};
-\node at (4.1,4.95) {\textbf{\small PC[11:2]}};
-\node at (6.75,4.95) {\tiny PC[1:0]};
-\node[above] at (1.1,5.3) {\tiny Ignorados};
-\node[above, color=blue!80!black] at (4.1,5.3) {\textbf{\tiny ÍNDICE BHT (10 bits)}};
-\node[above] at (6.75,5.3) {\tiny \texttt{2'b00}};
+    \begin{subfigure}[b]{0.52\textwidth}
+    \centering
+    \begin{tikzpicture}[scale=0.82, every node/.style={transform shape}]
+        % 1. Registro PC (32 bits)
+        \draw[thick] (0,4.6) rectangle (7.5,5.3);
+        \draw[thick] (2.2,4.6) -- (2.2,5.3);
+        \draw[thick] (6.0,4.6) -- (6.0,5.3);
+        \node at (1.1,4.95) {\tiny PC[31:12]};
+        \node at (4.1,4.95) {\textbf{\small PC[11:2]}};
+        \node at (6.75,4.95) {\tiny PC[1:0]};
+        \node[above] at (1.1,5.3) {\tiny Ignorados};
+        \node[above, color=blue!80!black] at (4.1,5.3) {\textbf{\tiny ÍNDICE BHT (10 bits)}};
+        \node[above] at (6.75,5.3) {\tiny \texttt{2'b00}};
 
-% Flecha del Índice hacia la columna de Entrada
-\draw[->,very thick,blue!80!black] (2.7,4.6) -- (2.7,3.4) node[midway,left] {\tiny Selecciona Fila};
+        % Flecha del Índice hacia la columna de Entrada
+        \draw[->,very thick,blue!80!black] (2.7,4.6) -- (2.7,3.4) node[midway,left] {\tiny Selecciona Fila};
 
-% 2. Tabla BHT (2 Columnas Explícitas)
-\draw[thick, fill=gray!25] (1.2,3.0) rectangle (6.8,3.4);
-\node at (2.7,3.2) {\textbf{\tiny Entrada / Índice}};
-\node at (5.4,3.2) {\textbf{\tiny Estado (2 bits)}};
-\draw[thick] (4.1,3.0) -- (4.1,3.4);
+        % 2. Tabla BHT (2 Columnas Explícitas)
+        \draw[thick, fill=gray!25] (1.2,3.0) rectangle (6.8,3.4);
+        \node at (2.7,3.2) {\textbf{\tiny Entrada / Índice}};
+        \node at (5.4,3.2) {\textbf{\tiny Estado (2 bits)}};
+        \draw[thick] (4.1,3.0) -- (4.1,3.4);
 
-% Cuerpo de la Tabla
-\draw[thick, fill=gray!5] (1.2,0.2) rectangle (6.8,3.0);
-\draw[thick] (4.1,0.2) -- (4.1,3.0);
+        % Cuerpo de la Tabla
+        \draw[thick, fill=gray!5] (1.2,0.2) rectangle (6.8,3.0);
+        \draw[thick] (4.1,0.2) -- (4.1,3.0);
 
-% Filas de la BHT
-\draw (1.2,2.5) -- (6.8,2.5);
-\node at (2.65,2.75) {\tiny \texttt{0x000} (Entrada 0)};
-\node at (5.45,2.75) {\tiny \texttt{01} (Weakly NT)};
+        % Filas de la BHT
+        \draw (1.2,2.5) -- (6.8,2.5);
+        \node at (2.65,2.75) {\tiny \texttt{0x000} (Entrada 0)};
+        \node at (5.45,2.75) {\tiny \texttt{01} (Weakly NT)};
 
-\draw (1.2,2.0) -- (6.8,2.0);
-\node at (2.65,2.25) {\tiny \texttt{0x001} (Entrada 1)};
-\node at (5.45,2.25) {\tiny \texttt{11} (Strongly T)};
+        \draw (1.2,2.0) -- (6.8,2.0);
+        \node at (2.65,2.25) {\tiny \texttt{0x001} (Entrada 1)};
+        \node at (5.45,2.25) {\tiny \texttt{11} (Strongly T)};
 
-\node at (2.65,1.7) {\tiny \dots};
-\node at (5.45,1.7) {\tiny \dots};
+        \node at (2.65,1.7) {\tiny \dots};
+        \node at (5.45,1.7) {\tiny \dots};
 
-% Fila Seleccionada (Highlighted)
-\draw[fill=blue!15, thick] (1.2,1.0) rectangle (6.8,1.4);
-\draw[thick] (4.1,1.0) -- (4.1,1.4);
-\node at (2.65,1.2) {\textbf{\tiny Índice PC[11:2]}};
-\node at (5.45,1.2) {\textbf{\tiny \texttt{10} (Weakly T)}};
+        % Fila Seleccionada (Highlighted)
+        \draw[fill=blue!15, thick] (1.2,1.0) rectangle (6.8,1.4);
+        \draw[thick] (4.1,1.0) -- (4.1,1.4);
+        \node at (2.65,1.2) {\textbf{\tiny Índice PC[11:2]}};
+        \node at (5.45,1.2) {\textbf{\tiny \texttt{10} (Weakly T)}};
 
-\node at (2.65,0.7) {\tiny \dots};
-\node at (5.45,0.7) {\tiny \dots};
+        \node at (2.65,0.7) {\tiny \dots};
+        \node at (5.45,0.7) {\tiny \dots};
 
-\draw (1.2,0.6) -- (6.8,0.6);
-\node at (2.65,0.4) {\tiny \texttt{0x3FF} (Entrada 1023)};
-\node at (5.45,0.4) {\tiny \texttt{00} (Strongly NT)};
+        \draw (1.2,0.6) -- (6.8,0.6);
+        \node at (2.65,0.4) {\tiny \texttt{0x3FF} (Entrada 1023)};
+        \node at (5.45,0.4) {\tiny \texttt{00} (Strongly NT)};
 
-% Salida de Predicción
-\draw[->,very thick,red!80!black] (6.8,1.2) -- (8.0,1.2) node[right, align=left] {\textbf{\footnotesize Predicción}\\[-2pt]\footnotesize (MSB = 1 $\rightarrow$ Taken)};
-\end{tikzpicture}
-\caption{Indexación y lectura en dos columnas de la BHT.}
-\label{fig:bht_index}
-\end{subfigure}%
-\hfill%
-\begin{subfigure}[b]{0.45\textwidth}
-\centering
-\begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,
-thick,main node/.style={circle,draw,align=center,font=\sffamily\tiny\bfseries,minimum size=1.0cm}]
+        % Salida de Predicción
+        \draw[->,very thick,red!80!black] (6.8,1.2) -- (8.0,1.2) node[right, align=left] {\textbf{\footnotesize Predicción}\\[-2pt]\footnotesize (MSB = 1 $\rightarrow$ Taken)};
+    \end{tikzpicture}
+    \caption{Indexación y lectura en dos columnas de la BHT.}
+    \label{fig:bht_index}
+    \end{subfigure}%
+    \hfill%
+    \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,
+    thick,main node/.style={circle,draw,align=center,font=\sffamily\tiny\bfseries,minimum size=1.0cm}]
+        % Nodos con colores
+        \node[main node, fill=red!15] (00) at (0,0) {\texttt{00}\\[-2pt]\tiny SNT};
+        \node[main node, fill=orange!20] (01) at (0,2.5) {\texttt{01}\\[-2pt]\tiny WNT};
+        \node[main node, fill=yellow!20] (10) at (2.5,2.5) {\texttt{10}\\[-2pt]\tiny WT};
+        \node[main node, fill=green!20] (11) at (2.5,0) {\texttt{11}\\[-2pt]\tiny ST};
 
-% Nodos con colores
-\node[main node, fill=red!15] (00) at (0,0) {\texttt{00}\\[-2pt]\tiny SNT};
-\node[main node, fill=orange!20] (01) at (0,2.5) {\texttt{01}\\[-2pt]\tiny WNT};
-\node[main node, fill=yellow!20] (10) at (2.5,2.5) {\texttt{10}\\[-2pt]\tiny WT};
-\node[main node, fill=green!20] (11) at (2.5,0) {\texttt{11}\\[-2pt]\tiny ST};
-
-% Transiciones (con curvas)
-\path[every node/.style={font=\sffamily\tiny}]
-% Bucles
-(00) edge[loop left] node{NT} (00)
-(11) edge[loop right] node{T} (11)
-% Horizontales y Verticales curvadas
-(00) edge[bend left] node{T} (01)
-(01) edge[bend left] node{NT} (00)
-% FIXED HORIZONTAL TOP ARROWS: Use standard bend left to curve them symmetrically
-(01) edge[bend left] node{T} (10)
-(10) edge[bend left] node{NT} (01)
-% Verticales
-(10) edge[bend right] node{T} (11)
-(11) edge[bend right] node{NT} (10);
-\end{tikzpicture}
-\caption{Transiciones del contador saturante de 2 bits.}
-\label{fig:bht_fsm}
-\end{subfigure}
+        % Transiciones (con curvas)
+        \path[every node/.style={font=\sffamily\tiny}]
+        % Bucles
+        (00) edge[loop left] node{NT} (00)
+        (11) edge[loop right] node{T} (11)
+        % Horizontales y Verticales curvadas
+        (00) edge[bend left] node{T} (01)
+        (01) edge[bend left] node{NT} (00)
+        % FIXED HORIZONTAL TOP ARROWS: Use standard bend left to curve them symmetrically
+        (01) edge[bend left] node{T} (10)
+        (10) edge[bend left] node{NT} (01)
+        % Verticales
+        (10) edge[bend right] node{T} (11)
+        (11) edge[bend right] node{NT} (10);
+    \end{tikzpicture}
+    \caption{Transiciones del contador saturante de 2 bits.}
+    \label{fig:bht_fsm}
+    \end{subfigure}
 
 \caption{Estructura interna de la tabla BHT y autómata de estados del predictor.}
 \label{fig:bht_complete_diagram}
@@ -470,7 +473,7 @@ El funcionamiento en el cauce de instrucciones se ilustra en la Figura \ref{fig:
     la dirección (\texttt{PC[11:2]}). Si el contador indica que el salto debe tomarse (\texttt{1X}), el procesador redirige inmediatamente el PC hacia la
     dirección de destino del salto en el siguiente ciclo.
     \item \textbf{Etapa de Execute (EX):} La ALU resuelve la condición real. Si la predicción fue correcta, la ejecución continúa a latencia cero. Si hubo un
-    error de especulación (\textit{mispredict}), la etapa de Execute emite una purga (\textit{flush}) de 2 ciclos, corrige el PC y actualiza el contador saturante
+    error de especulación (\textit{mispredict}), la etapa de Execute emite una purga (\textit{flush}) de 2 ciclos, corrige el PC y actualiza el estado en la BHT
     (Figura \ref{fig:bht_complete_diagram}(b)).
 \end{enumerate}
 
@@ -488,6 +491,7 @@ que redirige el PC \textbf{a coste de 0 ciclos de parada o purga}.
 \subsection{Jerarquía de Memoria L1 Harvard Modificada y Coherencia}
 
 \subsubsection{Justificación Arquitectónica: De Von Neumann a Harvard Modificada}
+
 \begin{conceptbox}{Von Neumann vs. Harvard Pura vs. Harvard Modificada}
 \begin{itemize}
     \item \textbf{Von Neumann:} Una única mesa de trabajo compartida para libros (recetas/instrucciones) e ingredientes (datos). Si el cocinero quiere picar
@@ -499,12 +503,23 @@ que redirige el PC \textbf{a coste de 0 ciclos de parada o purga}.
 \end{itemize}
 \end{conceptbox}
 
-En un procesador segmentado de 5 etapas, la coexistencia de las etapas de \textit{Fetch} (búsqueda continua de instrucciones) y \textit{Memory} (lectura y
-escritura de operandos) sobre un único bus de memoria de estructura \textbf{Von Neumann} genera un cuello de botella insostenible. Cada instrucción \texttt{LW}
-o \texttt{SW} competiría con la captura de la siguiente instrucción, provocando paradas (\textit{stalls}) estructurales continuas.
+En el núcleo procesador HaDes-V original, el sistema de memoria estaba estructurado bajo una arquitectura \textbf{Von Neumann pura} caracterizada por un único espacio 
+de direccionamiento y un solo bus interconector basado en la especificación \textit{Wishbone}. La memoria principal consistía en un bloque de RAM interna de la FPGA 
+(\textit{Block RAM} - BRAM) diseñado para responder a accesos en un ciclo ideal de latencia.
 
-Para erradicar este conflicto, en el procesador HaDes-V implementamos una \textbf{Arquitectura Harvard Modificada} en el nivel L1, cuya topología general se
-ilustra en la Figura \ref{fig:modified_harvard_architecture}.
+Esta aproximación simplificaba significativamente el diseño RTL inicial al prescindir de controladores de memoria complejos. Sin embargo, al operar sobre una 
+segmentación de 5 etapas, este esquema introdujo un \textbf{riesgo estructural} (\textit{structural hazard}) severo:
+\begin{itemize}
+    \item La etapa de \textit{Fetch} (IF) requiere acceder al bus en cada ciclo de reloj para capturar la siguiente instrucción del flujo del programa.
+    \item Cuando una instrucción de carga (\texttt{LW}) o almacenamiento (\texttt{SW}) alcanza la etapa de \textit{Memory} (MEM), exige el uso exclusivo del bus para leer o escribir su operando.
+\end{itemize}
+
+Al coexistir un único bus para ambas necesidades, la etapa de \textit{Fetch} se veía forzada a pausar la canalización (\textit{stall}), perdiendo ciclos de cómputo 
+útil. Además, este modelo exponía directamente la tubería del procesador a las latencias del bus, haciendo inviable el escalado hacia memorias externas más lentas.
+
+Para erradicar las paradas estructurales sin renunciar a la flexibilidad de un mapa de memoria unificado (necesario para que el \textit{Bootloader} pueda recibir 
+ejecutables vía UART y escribirlos en la RAM), en el procesador HaDes-V implementamos una \textbf{Arquitectura Harvard Modificada} en el nivel L1, cuya 
+topología general se ilustra en la Figura \ref{fig:modified_harvard_architecture}.
 
 % Figura: Diagrama de la jerarquía de memoria L1 Harvard Modificada
 \shorthandoff{<>}
@@ -582,7 +597,7 @@ ilustra en la Figura \ref{fig:modified_harvard_architecture}.
 \end{figure}
 \shorthandon{<>}
 
-\subsubsection{Estructura del Subsistema L1 e Interconexión Wishbone}
+\subsubsection{Estructura del Subsistema L1}
 Como se observa en el diagrama de la Figura \ref{fig:modified_harvard_architecture}, el nivel L1 desacopla completamente los accesos del núcleo mediante dos
 memorias caché independientes de mapeo directo (\textit{Direct-Mapped}):
 
@@ -614,16 +629,15 @@ Al ejecutar la instrucción estandarizada \textbf{\texttt{FENCE.I}}, la etapa de
 de validez (\textit{valid bits}) de la I-Cache, forzando a la etapa de \textit{Fetch} a recargar el código fresco desde la memoria RAM.
 
 
-\section{Análisis Post-Mortem y Debugging}
+\section{Diagnóstico y Resolución de Fallos}
 % ============================================================
 % CAPÍTULO 4: ANÁLISIS POST-MORTEM Y DEBUGGING
 % ============================================================
 
 \subsection{Filosofía del Análisis Post-Mortem}
-En la ingeniería de procesadores, la diferencia entre un prototipo académico y un núcleo de grado industrial radica en la comprensión de los estados transitorios
-de la ruta de datos. La integración de la especulación de control y la jerarquía L1 sobre un procesador segmentado expuso diversos problemas de sincronización,
-no determinismo y discrepancias entre simuladores de software y silicio real. En este capítulo se detallan los fallos más críticos enfrentados y superados
-durante el desarrollo de HaDes-V.
+El verdadero reto al diseñar un procesador segmentado radica en garantizar la corrección del \textbf{cauce de instrucciones} durante eventos no deterministas, como 
+purgas de la tubería, paradas de memoria o accesos desalineados al bus. La integración del esquema BHT y el subsitema L1 expuso fallos críticos de 
+sincronización que requerían un diagnóstico riguroso. A continuación, se exponen los casos de estudio más relevantes y sus soluciones.
 
 \subsection{Depuración del Control e I-Cache}
 
@@ -738,31 +752,32 @@ diseñados para estresar diferentes aspectos microarquitectónicos del núcleo:
 
 \begin{itemize}
     \item \textbf{Bubble Sort:} Algoritmo de ordenación de vectores con fuerte dominancia de control condicional y lecturas masivas a memoria.
-    \item \textbf{Matrix Multiplication:} Carga aritmética intensiva compuesta por bucles anidados y llamadas a subrutinas de software (\texttt{\_\_mulsi3}).
+    \item \textbf{Matrix Multiplication:} Carga aritmética intensiva compuesta por bucles anidados.
     \item \textbf{Memory Copy:} Benchmark orientado a transferencias de datos en ráfaga con un alto porcentaje de instrucciones de escritura (\texttt{SW}).
     \item \textbf{Fibonacci:} Algoritmo recursivo que ejercita el manejo de la pila (\textit{stack}) con accesos cruzados de lectura y escritura Read-After-Write 
     (RAW).
 \end{itemize}
 
-\subsection{Análisis del Instruction Mix y Desglose de Pipeline}
+\subsection{Análisis del Instruction Mix y Desglose del Cauce de Instrucciones}
 La infraestructura de telemetría (HPCs) mapeada en la etapa de \textit{Writeback} permitió registrar la distribución exacta de instrucciones por categoría
 funcional para cada programa, como se detalla en la Tabla \ref{tab:instruction_mix}.
 
+% Tabla de Mix de Instrucciones por Benchmark
 \begin{table}[H]
-\centering
-\small
-\caption{Desglose del perfil de instrucciones (\textit{Instruction Mix}) por benchmark.}
-\label{tab:instruction_mix}
-\begin{tabularx}{\textwidth}{L c c c c c c c}
-\toprule
-\textbf{Benchmark} & \textbf{Instrucciones} & \textbf{ALU} & \textbf{LOADs} & \textbf{STORES} & \textbf{BRANCHES} & \textbf{JUMPs} & \textbf{EXC} \\
-\midrule
-Bubble Sort & 25.467 & 5.447 & 9.900 & 110 & 9.999 & 0 & 0 \\
-Matrix Mult & 13.342 & 7.942 & 1.041 & 100 & 3.224 & 1.024 & 0 \\
-Memory Copy & 2.330 & 1.284 & 256 & 523 & 256 & 0 & 0 \\
-Fibonacci   & 9.650 & 5.878 & 875 & 886 & 2.000 & 0 & 0 \\
-\bottomrule
-\end{tabularx}
+    \centering
+    \small
+    \caption{Desglose del perfil de instrucciones (\textit{Instruction Mix}) por benchmark.}
+    \label{tab:instruction_mix}
+    \begin{tabularx}{\textwidth}{L c c c c c c c}
+        \toprule
+        \textbf{Benchmark} & \textbf{Instrucciones} & \textbf{ALU} & \textbf{LOADs} & \textbf{STORES} & \textbf{BRANCHES} & \textbf{JUMPs} & \textbf{EXC} \\
+        \midrule
+            Bubble Sort    &        25.467          &     5.447    &       9.900    &       110       &        9.999      &        0       &       0      \\
+            Matrix Mult    &        13.342          &     7.942    &       1.041    &       100       &        3.224      &      1.024     &       0      \\
+            Memory Copy    &        2.330           &     1.284    &       256      &       523       &        256        &        0       &       0      \\
+            Fibonacci      &        9.650           &     5.878    &       875      &       886       &        2.000      &        0       &       0      \\
+        \bottomrule
+    \end{tabularx}
 \end{table}
 
 El análisis del \textit{Instruction Mix} revela particularidades críticas de co-diseño:
@@ -779,27 +794,29 @@ El análisis del \textit{Instruction Mix} revela particularidades críticas de c
 \subsection{Evolución Microarquitectónica: Baseline vs. BHT vs. L1 Final}
 
 La Tabla \ref{tab:metrics_comparison} resume el impacto acumulativo de las tres iteraciones principales del procesador, evaluadas mediante simulación de ciclo
-exacto en Verilator y confirmadas sobre silicio físico en la FPGA Nexys A7-100T a 100 MHz.
+exacto en Verilator y confirmadas sobre silicio físico en la FPGA Nexys A7-100T.
 
 \begin{table}[H]
-\centering
-\scriptsize
-\caption{Comparativa de rendimiento entre iteraciones microarquitectónicas (FPGA Nexys A7).}
-\label{tab:metrics_comparison}
-\begin{tabularx}{\textwidth}{l c c c c c c c c}
-\toprule
-\textbf{Benchmark} & \textbf{Pasada} & \textbf{Baseline (Ciclos)} & \textbf{Baseline (IPC)} & \textbf{BHT (Ciclos)} & \textbf{BHT (IPC)} & \textbf{L1+BHT (Ciclos)} & \textbf{L1+BHT (IPC)} & \textbf{Pass Status} \\
-\midrule
-Bubble Sort & COLD & 50.314 & 0,506 & 30.722 & 0,828 & 31.021 & 0,820 & VALID \\
-\textbf{Bubble Sort} & \textbf{HOT} & \textbf{50.314} & \textbf{0,506} & \textbf{30.718} & \textbf{0,829} & \textbf{30.836} & \textbf{0,825} & \textbf{VALID} \\
-Matrix Mult & COLD & 18.662 & 0,714 & 16.562 & 0,805 & 17.894 & 0,745 & VALID \\
-\textbf{Matrix Mult} & \textbf{HOT} & \textbf{18.662} & \textbf{0,714} & \textbf{16.554} & \textbf{0,805} & \textbf{17.615} & \textbf{0,757} & \textbf{VALID} \\
-Memory Copy & COLD & 3.096 & 0,752 & 2.590 & 0,899 & 3.288 & 0,708 & VALID \\
-\textbf{Memory Copy} & \textbf{HOT} & \textbf{3.096} & \textbf{0,752} & \textbf{2.588} & \textbf{0,900} & \textbf{2.902} & \textbf{0,802} & \textbf{VALID} \\
-Fibonacci   & COLD & 12.773 & 0,755 & 10.781 & 0,895 & 10.832 & 0,890 & VALID \\
-\textbf{Fibonacci}   & \textbf{HOT} & \textbf{12.773} & \textbf{0,755} & \textbf{10.777} & \textbf{0,895} & \textbf{10.830} & \textbf{0,891} & \textbf{VALID} \\
-\bottomrule
-\end{tabularx}
+    \centering
+    \scriptsize
+    \caption{Comparativa de rendimiento entre iteraciones microarquitectónicas (FPGA Nexys A7).}
+    \label{tab:metrics_comparison}
+    \begin{tabularx}{\textwidth}{L c C C C C C C c}
+        \toprule
+        & & \multicolumn{2}{c}{\textbf{Baseline}} & \multicolumn{2}{c}{\textbf{BHT}} & \multicolumn{2}{c}{\textbf{L1 + BHT}} & \\
+        \cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8}
+        \textbf{Benchmark} & \textbf{Pasada} & \textbf{Ciclos} & \textbf{IPC} & \textbf{Ciclos} & \textbf{IPC} & \textbf{Ciclos} & \textbf{IPC} & \textbf{Estado} \\
+        \midrule
+            Bubble Sort & COLD & 50.314 & 0,506 & 30.722 & 0,828 & 31.021 & 0,820 & VALID \\
+            \textbf{Bubble Sort} & \textbf{HOT} & \textbf{50.314} & \textbf{0,506} & \textbf{30.718} & \textbf{0,829} & \textbf{30.836} & \textbf{0,825} & \textbf{VALID} \\
+            Matrix Mult & COLD & 18.662 & 0,714 & 16.562 & 0,805 & 17.894 & 0,745 & VALID \\
+            \textbf{Matrix Mult} & \textbf{HOT} & \textbf{18.662} & \textbf{0,714} & \textbf{16.554} & \textbf{0,805} & \textbf{17.615} & \textbf{0,757} & \textbf{VALID} \\
+            Memory Copy & COLD & 3.096 & 0,752 & 2.590 & 0,899 & 3.288 & 0,708 & VALID \\
+            \textbf{Memory Copy} & \textbf{HOT} & \textbf{3.096} & \textbf{0,752} & \textbf{2.588} & \textbf{0,900} & \textbf{2.902} & \textbf{0,802} & \textbf{VALID} \\
+            Fibonacci   & COLD & 12.773 & 0,755 & 10.781 & 0,895 & 10.832 & 0,890 & VALID \\
+            \textbf{Fibonacci}   & \textbf{HOT} & \textbf{12.773} & \textbf{0,755} & \textbf{10.777} & \textbf{0,895} & \textbf{10.830} & \textbf{0,891} & \textbf{VALID} \\
+        \bottomrule
+    \end{tabularx}
 \end{table}
 
 \subsubsection{Validación del Determinismo Matemático en la BHT}
@@ -849,25 +866,38 @@ Dado que cuatriplicar la capacidad especulativa solo representa el $1\%$ del uso
 ($100\text{ MHz}$ garantizados), el diseño final consolida la BHT de $4\text{K}$ entradas, alineando el núcleo con los estándares de rendimiento de la industria.
 
 \subsubsection{Eficiencia del Subsistema L1 y Absorción de Latencias}
-Al comparar los eventos de la ruta de datos entre pases COLD y HOT en la Tabla \ref{tab:pipeline_events}, se comprueba la absorción de latencias por el
+Es importante destacar que la incorporación de la jerarquía de memoria L1 no se traduce en un incremento neto del IPC nominal con respecto a la versión con BHT pura 
+(e incluso introduce leves penalizaciones en las pasadas en frío o \textit{COLD}, como se observa en la Tabla \ref{tab:metrics_comparison}). Este comportamiento es 
+el esperado desde el punto de vista arquitectónico: dado que la memoria principal de partida está implementada en bloques de memoria interna de la FPGA 
+(\textit{Block RAM}) con una latencia ideal de acceso de un único ciclo, las cachés L1 no pueden mejorar el tiempo de acceso en caso de acierto (\textit{hit}), 
+mientras que cada fallo de caché (\textit{miss}) añade una penalización ineludible para cargar la ráfaga de 4 palabras.
+
+Sin embargo, el valor real de las cachés L1 no reside en la aceleración sobre memorias de latencia ideal, sino en el \textbf{desacoplamiento de la CPU frente al 
+exterior} y en la \textbf{resolución del riesgo estructural}. Por un lado, la separación en I-Cache y D-Cache elimina de forma definitiva el conflicto de bus de 
+la arquitectura Von Neumann inicial, permitiendo realizar capturas de instrucciones y accesos a datos de forma simultánea. Por otro lado, prepara al procesador para 
+interactuar con memorias RAM externas o memorias Flash no volátiles (cuyas latencias reales son de decenas de ciclos); en ese escenario real, el diseño sin caché 
+sufriría una degradación catastrófica del rendimiento, mientras que la jerarquía L1 mantendría el IPC cerca del límite ideal en las pasadas en caliente. Este efecto 
+de absorción se evidencia al analizar el comportamiento de las paradas en caliente:
+
+Al comparar los eventos entre pases COLD y HOT en la Tabla \ref{tab:pipeline_events}, se comprueba la absorción de latencias por el
 subsistema de memoria:
 
 % Arreglar que se vea bien
 \begin{table}[H]
-\centering
-\small
-\caption{Eventos del pipeline (Stalls) en el sistema final L1 + BHT.}
-\label{tab:pipeline_events}
-\begin{tabularx}{0.88\textwidth}{@{}>{\centering\arraybackslash}p{0.26\textwidth} >{\centering\arraybackslash}p{0.22\textwidth} >{\centering\arraybackslash}X@{}}
-\toprule
-\textbf{Benchmark} & \textbf{Pasada} & \textbf{Paradas de Memoria (Stalls)} \\
-\midrule
-Bubble Sort & COLD $\to$ HOT & $5.298 \to 5.167$ ($\Delta -131$) \\
-Matrix Mult & COLD $\to$ HOT & $216 \to 31$ (\textbf{$\Delta -85,6\%$ Stalls}) \\
-Memory Copy & COLD $\to$ HOT & $902 \to 570$ (\textbf{$\Delta -36,8\%$ Stalls}) \\
-Fibonacci   & COLD $\to$ HOT & $875 \to 875$ (Estable) \\
-\bottomrule
-\end{tabularx}
+    \centering
+    \small
+    \caption{Paradas de Memoria (Stalls) en el sistema final L1 + BHT.}
+    \label{tab:pipeline_events}
+    \begin{tabularx}{0.88\textwidth}{@{}>{\centering\arraybackslash}p{0.26\textwidth} >{\centering\arraybackslash}p{0.22\textwidth} >{\centering\arraybackslash}X@{}}
+        \toprule
+        \textbf{Benchmark} & \textbf{Pasada} & \textbf{Paradas de Memoria (Stalls)} \\
+        \midrule
+        Bubble Sort & COLD $\to$ HOT & $5.298 \to 5.167$ (2,5\% de reducción) \\
+        Matrix Mult & COLD $\to$ HOT & $216 \to 31$ (\textbf{85,6\% de reducción}) \\
+        Memory Copy & COLD $\to$ HOT & $902 \to 570$ (\textbf{36,8\% de reducción}) \\
+        Fibonacci   & COLD $\to$ HOT & $875 \to 875$ (Estable) \\
+        \bottomrule
+    \end{tabularx}
 \end{table}
 
 \begin{itemize}
@@ -936,6 +966,7 @@ Un resultado fundamental de la fase de optimización es la recuperación y conso
     \item \textbf{Estabilidad en el Sistema Final L1+BHT:} La inclusión de las cachés de datos e instrucciones y las FSMs de control incrementaron la lógica ($26.222$ endpoints procesados), pero el diseño mantuvo un margen positivo confiable ($\text{WNS} = +0,036\text{ ns}$ a $100\text{ MHz}$ y $+0,015\text{ ns}$ en la compilación extendida de $27.993$ endpoints), garantizando la viabilidad física del procesador sobre la tarjeta Nexys A7.
 \end{enumerate}
 
+
 \section{Conclusiones y Trabajo Futuro}
 % ============================================================
 % CAPÍTULO 6: CONCLUSIONES Y TRABAJO FUTURO
@@ -951,9 +982,11 @@ A lo largo del proyecto se han alcanzado los siguientes hitos fundamentales:
     \item \textbf{Especulación de Control Eficiente:} La integración de la \textit{Branch History Table} (BHT) de $4096$ entradas con contadores saturantes d
     2 bits y el mecanismo \textit{JAL Bypass} eliminó el $99\%$ de las purgas de segmentación en bucles iterativos (\textit{Bubble Sort} redujo sus
     \textit{flushes} de $9.899$ a $101$), elevando el IPC base de $0,506$ a $0,829$.
-    \item \textbf{Jerarquía L1 Harvard Modificada:} La separación en I-Cache y D-Cache de $4\text{ KB}$ junto con el \textit{Write Buffer} asíncrono
-    (\textit{Fire \& Forget}) absorbió las paradas por accesos a memoria, logrando reducciones de \textit{stalls} de hasta un $85,6\%$ en multiplicación de
-    matrices y un $36,8\%$ en transferencias de memoria.
+    \item \textbf{Jerarquía L1 Harvard Modificada:} La separación en I-Cache y D-Cache de $4\text{ KB}$ junto con el \textit{Write Buffer} asíncrono 
+    (\textit{Fire \& Forget}) resolvieron el conflicto estructural de bus propio de la arquitectura Von Neumann base. Aunque este subsistema L1 no incrementa el 
+    IPC nominal respecto a la versión con BHT pura debido a la latencia ideal (1 ciclo) de la BRAM interna de la FPGA, proporciona un desacoplamiento físico crítico 
+    frente a memorias principales externas más lentas y absorbió con éxito las paradas por accesos, reduciendo los \textit{stalls} de memoria hasta un $85,6\%$ en 
+    multiplicación de matrices y un $36,8\%$ en transferencias de datos.
     \item \textbf{Coherencia y Sincronización por Hardware:} Se resolvió de forma transparente el problema del ``código zombie'' al cargar ejecutables vía UART
     mediante la implementación de una línea de invalidación síncrona activada por la instrucción estándar \texttt{FENCE.I}.
     \item \textbf{Telemetría Transparente y Cierre Temporal:} La ubicación estratégica de los contadores HPCs en la etapa de \textit{Writeback} permitió auditar
@@ -968,7 +1001,7 @@ El análisis post-mortem de las diferentes fases del desarrollo ha puesto de man
     microarquitectónicas basadas en evidencias empíricas.
     \item \textbf{Desacoplamiento del camino crítico:} Mantener la lógica de especulación e instrumentación fuera de los multiplexores de direccionamiento en
     \textit{Fetch} y \textit{Execute} es vital para mantener elevadas frecuencias de operación en FPGAs.
-    \item \textbf{Defensa contra estados transitorios:} La necesidad de registros de retención inmutables (\texttt{fetch\_base\_adr}) y estados strictly de bus
+    \item \textbf{Defensa contra estados transitorios:} La necesidad de registros de retención inmutables (\texttt{fetch\_}\allowbreak\texttt{base\_}\allowbreak\texttt{adr}) y estados de bus
     (\texttt{MMIO\_ACCESS}) demuestra que el hardware debe protegerse contra señales combinacionales fluctuantes durante situaciones de congelación del pipeline
     (\textit{stall}).
 \end{itemize}
