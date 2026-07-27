@@ -237,8 +237,8 @@ Para superar ambos muros, en este trabajo se diseñaron e implementaron sobre el
 
 \subsection{Estructura de la Memoria}
 El resto de este informe se organiza como sigue: El \textbf{Capítulo 2} detalla el contexto del desafío organizado por RISC-V International y la arquitectura
-inicial. El \textbf{Capítulo 3} explica el diseño detallado de la BHT, las cachés L1 y la telemetría. El \textbf{Capítulo 4} expone el análisis forense de
-depuración (\textit{Post-Mortem}) analizando 7 fallos reales de hardware. El \textbf{Capítulo 5} presenta la evaluación cuantitativa de rendimiento sobre los
+inicial. El \textbf{Capítulo 3} explica el diseño detallado de la BHT, las cachés L1 y la telemetría. El \textbf{Capítulo 4} expone el análisis (\textit{Post-Mortem}) 
+del desarrollo, analizando fallos reales de hardware. El \textbf{Capítulo 5} presenta la evaluación cuantitativa de rendimiento sobre los
 microbenchmarks y los resultados de síntesis en la FPGA. Finalmente, el \textbf{Capítulo 6} sintetiza las conclusiones y el trabajo futuro.
 
 
@@ -250,13 +250,13 @@ microbenchmarks y los resultados de síntesis en la FPGA. Finalmente, el \textbf
 \subsection{El Community Challenge with HaDes-V}
 Este proyecto se ha desarrollado en el marco del \textit{Community Challenge with HaDes-V}, promovido por la organización global \textbf{RISC-V International} y
 organizado por el grupo de Arquitecturas y Sistemas Empotrados de la \textbf{Universidad Tecnológica de Graz (TU Graz)}. La iniciativa busca fomentar el
-aprendizaje práctico en el diseño y optimización de procesadores de código abierto.
+aprendizaje práctico en el diseño y optimización de procesadores.
 
 El reto proponía a los participantes implementar primero una base común sobre un diseño de núcleo docente y, una vez completada esa línea base, diseñar e
 integrar cualquier tipo de mejora microarquitectónica, en el caso de este proyecto, para maximizar su rendimiento y eficiencia.
 
 \subsection{Arquitectura de Partida}
-El núcleo base utilizado es \textbf{HaDes-V}, una plataforma desarrollada con fines docentes que implementa una arquitectura escalar de 32 bits conforme a la
+El diseño base utilizado es \textbf{HaDes-V}, una plataforma desarrollada con fines docentes que implementa una arquitectura escalar de 32 bits conforme a la
 especificación estándar \textbf{RISC-V (RV32I)}, con un nivel de privilegio exclusivo de Modo Máquina (\textit{M-Mode}).
 
 El núcleo de partida organiza su ruta de datos en una segmentación clásica de 5 etapas:
@@ -286,7 +286,7 @@ proporcionaba un flujo de trabajo compuesto por:
     comunicándose por enlace serie UART.
 \end{itemize}
 
-Si bien la práctica estaba originalmente planteada para ser ejecutada sobre placas FPGA Digilent Basys 3, para este trabajo contamos con la cesión por parte 
+Si bien el proyecto estaba originalmente planteado para ser ejecutado sobre placas FPGA Digilent Basys 3, para este trabajo contamos con la cesión por parte 
 de la \textbf{Universidad de Alicante} de una placa de desarrollo de mayores prestaciones, la \textbf{Digilent Nexys A7-100T} (con chip 
 \textbf{Xilinx Artix-7 XC7A100T-1CSG324C}), lo que nos permitió sintetizar y validar el procesador a una frecuencia de reloj objetivo de \textbf{100 MHz} sin problema alguno.
 
@@ -300,9 +300,9 @@ de la \textbf{Universidad de Alicante} de una placa de desarrollo de mayores pre
 
 \subsubsection{Motivación y Necesidad de Observabilidad}
 \begin{conceptbox}{¿Por qué colocar contadores en el propio chip?}
-    Medir el tiempo total que tarda un programa en ejecutarse con un cronómetro externo no explica \textbf{por qué} un procesador es lento. Se necesita un «termómetro de 
-    silicio» dentro del chip capaz de contar exactamente cuántos ciclos se han dedicado a calcular, cuántos se han perdido esperando a la memoria RAM y cuántos se 
-    han tirado a la basura por fallar en la predicción de un salto.
+    Medir el tiempo total que tarda un programa en ejecutarse con un cronómetro externo no explica \textbf{por qué} un procesador es lento. Se necesita un «sistema
+    de telemetría integrado» dentro del chip capaz de contar exactamente cuántos ciclos se han dedicado a calcular, cuántos se han perdido esperando a la memoria RAM 
+    y cuántos se han tirado a la basura por fallar en la predicción de un salto.
 \end{conceptbox}
 
 Antes de integrar cualquier característica nueva como el predictor de saltos o memorias caché, necesitábamos una manera de saber de forma determinista y exacta 
@@ -311,7 +311,7 @@ núcleo base HaDes-V fue un subsistema de \textbf{Contadores de Rendimiento de H
 
 Los HPCs se ubicaron estratégicamente en la \textbf{última etapa de la segmentación: Writeback (WB)}. En esta etapa, las instrucciones ya han sido resueltas y 
 confirmadas de forma inmutable (\textit{retired instructions}). La instrumentación en WB procesa exclusivamente señales registradas, desacoplando la lógica de 
-telemetría de los multiplexores críticos de las etapas previas para proteger la meta de los \textbf{100 MHz} en la FPGA.
+telemetría de los multiplexores críticos de las etapas previas para no penalizar el rendimiento de la FPGA.
 
 El subsistema monitoriza en tiempo real y clasifica en la etapa de retiro (\textit{Writeback}) las siguientes métricas registradas en los contadores CSR de 64 bits:
 
@@ -337,7 +337,7 @@ Para que el software pueda leer estas métricas sin sondas externas, los contado
 (\textit{CSR Read}).
 
 Al volcar la telemetría al final de la ejecución de una carga de trabajo, surge el conocido \textit{Efecto Observador}: la propia rutina encargada de leer 
-los contadores e imprimirlos por pantalla incrementa el recuento total de instrucciones. En nuestro harness de evaluación, esta sobrecarga consiste en un 
+los contadores e imprimirlos por pantalla incrementa el recuento total de instrucciones. En nuestro conjunto de pruebas, esta sobrecarga consiste en un 
 bloque fijo y determinista de exactamente \textbf{11 instrucciones \texttt{csrr}} al término del programa. Al conocer con precisión matemática esta constante, 
 es posible restar $11$ al recuento para aislar el trabajo neto del algoritmo evaluado sin introducir distorsiones.
 
@@ -354,16 +354,18 @@ interna indexada por los bits inferiores de la dirección del Contador de Progra
 el historial reciente de cada instrucción de salto utilizando un contador de 2 bits con cuatro estados posibles:
 
 \begin{itemize}
-    \item \texttt{00} (\textit{Strongly Not-Taken} (SNT)): Predice fuertemente que el salto NO se tomará y por tanto no se tomará.
-    \item \texttt{01} (\textit{Weakly Not-Taken} (WNT)): Predice que el salto NO se tomará.
-    \item \texttt{10} (\textit{Weakly Taken} (WT)): Predice que el salto SÍ se tomará.
-    \item \texttt{11} (\textit{Strongly Taken} (ST)): Predice fuertemente que el salto SÍ se tomará y por tanto se tomará.
+    \item \texttt{00} (\textit{Strongly Not-Taken} (SNT)): Predice no tomar el salto con máxima confianza; requiere dos fallos consecutivos para cambiar la tendencia 
+    a «Tomado».
+    \item \texttt{01} (\textit{Weakly Not-Taken} (WNT)): Predice no tomar el salto con baja confianza; un único fallo cambia la tendencia a «Tomado».
+    \item \texttt{10} (\textit{Weakly Taken} (WT)): Predice tomar el salto con baja confianza; un único fallo conmuta la tendencia a «No Tomado».
+    \item \texttt{11} (\textit{Strongly Taken} (ST)): Predice tomar el salto con máxima confianza; amortigua el fallo puntual de salida de un bucle.
 \end{itemize}
 
-La clave técnica de emplear 2 bits frente a un predictor de 1 bit radica en la \textbf{histéresis}. Es decir, en un bucle que se repite muchas veces (ej. 100 iteraciones),
-la última iteración siempre fallará (ya que el bucle termina y el salto no se toma). Un predictor de 1 bit cambiaría su estado inmediatamente a "No Tomado",
-volviendo a fallar en la primera iteración de la siguiente ejecución del bucle. El contador saturante de 2 bits actúa como el margen de un termostato: amortigua
-este fallo puntual degradando el estado de \textit{Strongly Taken} a \textit{Weakly Taken}, manteniendo la predicción correcta para futuras ejecuciones.
+La ventaja fundamental de utilizar un contador de 2 bits frente a un predictor simple de 1 bit reside en la propiedad de \textbf{histéresis} (inercia de estado). En
+algoritmos con bucles iterativos frecuentes, la última iteración del bucle siempre falla al evaluar la condición de salida. Mientras que un predictor de 1 bit
+cambiaría inmediatamente su predicción a «No Tomado» —provocando un segundo fallo inevitable al reingresar al bucle—, el contador saturante de 2 bits amortigua este
+evento aislado: el primer fallo únicamente degrada el nivel de confianza de \textit{Strongly Taken} a \textit{Weakly Taken}, conservando la predicción correcta para
+las futuras ejecuciones del bucle.
 
 % Figura: Diagrama de la BHT y el autómata de estados
 \shorthandoff{<>}
@@ -470,7 +472,7 @@ El funcionamiento en el cauce de instrucciones se ilustra en la Figura \ref{fig:
     la dirección (\texttt{PC[11:2]}). Si el contador indica que el salto debe tomarse (\texttt{1X}), el procesador redirige inmediatamente el PC hacia la
     dirección de destino del salto en el siguiente ciclo.
     \item \textbf{Etapa de Execute (EX):} La ALU resuelve la condición real. Si la predicción fue correcta, la ejecución continúa a latencia cero. Si hubo un
-    error de especulación (\textit{mispredict}), la etapa de Execute emite una purga (\textit{flush}) de 2 ciclos, corrige el PC y actualiza el contador saturante
+    error de especulación (\textit{mispredict}), la etapa de Execute emite una purga (\textit{flush}) de 2 ciclos, corrige el PC y actualiza el estado en la BHT
     (Figura \ref{fig:bht_complete_diagram}(b)).
 \end{enumerate}
 
@@ -488,6 +490,21 @@ que redirige el PC \textbf{a coste de 0 ciclos de parada o purga}.
 \subsection{Jerarquía de Memoria L1 Harvard Modificada y Coherencia}
 
 \subsubsection{Justificación Arquitectónica: De Von Neumann a Harvard Modificada}
+
+En el núcleo procesador HaDes-V original, el sistema de memoria estaba estructurado bajo una arquitectura \textbf{Von Neumann pura} caracterizada por un único espacio 
+de direccionamiento y un solo bus interconector basado en la especificación \textit{Wishbone}. La memoria principal consistía en un bloque de RAM interna de la FPGA 
+(\textit{Block RAM} - BRAM) diseñado para responder a accesos en un ciclo ideal de latencia.
+
+Esta aproximación simplificaba significativamente el diseño RTL inicial al prescindir de controladores de memoria complejos. Sin embargo, al operar sobre una 
+segmentación de 5 etapas, este esquema introdujo un \textbf{riesgo estructural} (\textit{structural hazard}) severo:
+\begin{itemize}
+    \item La etapa de \textit{Fetch} (IF) requiere acceder al bus en cada ciclo de reloj para capturar la siguiente instrucción del flujo del programa.
+    \item Cuando una instrucción de carga (\texttt{LW}) o almacenamiento (\texttt{SW}) alcanza la etapa de \textit{Memory} (MEM), exige el uso exclusivo del bus para leer o escribir su operando.
+\end{itemize
+
+Al coexistir un único bus para ambas necesidades, la etapa de \textit{Fetch} se veía forzada a pausar la canalización (\textit{stall}), perdiendo ciclos de cómputo 
+útil. Además, este modelo exponía directamente la tubería del procesador a las latencias del bus, haciendo inviable el escalado hacia memorias externas más lentas.
+
 \begin{conceptbox}{Von Neumann vs. Harvard Pura vs. Harvard Modificada}
 \begin{itemize}
     \item \textbf{Von Neumann:} Una única mesa de trabajo compartida para libros (recetas/instrucciones) e ingredientes (datos). Si el cocinero quiere picar
