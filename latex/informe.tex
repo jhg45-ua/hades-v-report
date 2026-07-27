@@ -290,7 +290,7 @@ proporcionaba un flujo de trabajo compuesto por:
 
 Si bien el proyecto estaba originalmente planteado para ser ejecutado sobre placas FPGA Digilent Basys 3, para este trabajo contamos con la cesión por parte 
 de la \textbf{Universidad de Alicante} de una placa de desarrollo de mayores prestaciones, la \textbf{Digilent Nexys A7-100T} (con chip 
-\textbf{Xilinx Artix-7 XC7A100T-1CSG324C}), lo que nos permitió sintetizar y validar el procesador a una frecuencia de reloj objetivo de \textbf{100 MHz} sin problema alguno.
+\textbf{Xilinx Artix-7 XC7A100T-1CSG324C}), lo que nos permitió sintetizar y validar el procesador sin problema alguno.
 
 
 \section{Diseño Microarquitectónico e Innovaciones}
@@ -511,7 +511,8 @@ Esta aproximación simplificaba significativamente el diseño RTL inicial al pre
 segmentación de 5 etapas, este esquema introdujo un \textbf{riesgo estructural} (\textit{structural hazard}) severo:
 \begin{itemize}
     \item La etapa de \textit{Fetch} (IF) requiere acceder al bus en cada ciclo de reloj para capturar la siguiente instrucción del flujo del programa.
-    \item Cuando una instrucción de carga (\texttt{LW}) o almacenamiento (\texttt{SW}) alcanza la etapa de \textit{Memory} (MEM), exige el uso exclusivo del bus para leer o escribir su operando.
+    \item Cuando una instrucción de carga (\texttt{LW}) o almacenamiento (\texttt{SW}) alcanza la etapa de \textit{Memory} (MEM), exige el uso exclusivo del bus para 
+    leer o escribir su operando.
 \end{itemize}
 
 Al coexistir un único bus para ambas necesidades, la etapa de \textit{Fetch} se veía forzada a pausar la canalización (\textit{stall}), perdiendo ciclos de cómputo 
@@ -930,11 +931,16 @@ subsistema de memoria:
 \end{conceptbox}
 
 \subsubsection{La Importancia del Cierre Temporal en Ingeniería de Semiconductores}
-En el diseño de circuitos digitales, conseguir que una descripción en SystemVerilog funcione correctamente en simulación es solo la mitad del trabajo. Al sintetizar e implementar la lógica sobre los elementos físicos de la FPGA, las señales eléctricas requieren un tiempo finito para propagarse a través de las puertas lógicas, multiplexores y cables de interconexión.
+En el diseño de circuitos digitales, conseguir que una descripción en SystemVerilog funcione correctamente en simulación es solo la mitad del trabajo. Al sintetizar e 
+implementar la lógica sobre los elementos físicos de la FPGA, las señales eléctricas requieren un tiempo finito para propagarse a través de las puertas lógicas, 
+multiplexores y cables de interconexión.
 
-Si el camino combinacional más largo entre dos registros (\textit{camino crítico}) tarda más de los $10\text{ ns}$ asignados por el periodo de reloj a $100\text{ MHz}$, el registro de destino capturará una señal inestable o corrupta, provocando fallos impredecibles en silicio real. Alcanzar el \textbf{Cierre Temporal} (\textit{Timing Closure}, caracterizado por un $\text{WNS} \ge 0$) es el requisito físico imprescindible que certifica que el procesador operará a $100\text{ MHz}$ de forma determinista, estable y térmicamente segura en la tarjeta FPGA.
+Si el camino combinacional más largo entre dos registros (\textit{camino crítico}) tarda más de los $10\text{ ns}$ asignados por el periodo de reloj a 
+$100\text{ MHz}$, el registro de destino capturará una señal inestable o corrupta, provocando fallos impredecibles en silicio real. Alcanzar el 
+\textbf{Cierre Temporal} (\textit{Timing Closure}, caracterizado por un $\text{WNS} \ge 0$) es el requisito físico imprescindible que certifica que el 
+procesador operará a $100\text{ MHz}$ de forma determinista, estable y térmicamente segura en la tarjeta FPGA.
 
-La evolución física del diseño sintetizado para la FPGA \textbf{Digilent Nexys A7-100T} a una frecuencia objetivo de \textbf{100 MHz} se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
+La evolución física del diseño sintetizado para la FPGA \textbf{Digilent Nexys A7-100T} se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
 
 \begin{table}[H]
 \centering
@@ -961,9 +967,13 @@ Margen Térmico & 57,6 $^\circ\text{C}$ & 57,6 $^\circ\text{C}$ & 57,5 $^\circ\t
 \subsubsection{Análisis del Cierre Temporal y Evolución del Camino Crítico}
 Un resultado fundamental de la fase de optimización es la recuperación y consolidación del cierre temporal:
 \begin{enumerate}
-    \item \textbf{Fallo de Tiempo en el Núcleo Baseline:} El diseño inicial violaba el tiempo de ciclo a 100 MHz ($\text{WNS} = -0,039\text{ ns}$ con 2 \textit{failing endpoints}), debido a la dilatada cadena combinacional en la resolución estática de saltos y direccionamiento del bus.
-    \item \textbf{Mejora con BHT y Desacoplamiento:} La inserción del predictor BHT y el registro de la dirección de predicción en \textit{Fetch} rompieron la cadena combinacional, elevando el slack a un holgado $\text{WNS} = +0,319\text{ ns}$.
-    \item \textbf{Estabilidad en el Sistema Final L1+BHT:} La inclusión de las cachés de datos e instrucciones y las FSMs de control incrementaron la lógica ($26.222$ endpoints procesados), pero el diseño mantuvo un margen positivo confiable ($\text{WNS} = +0,036\text{ ns}$ a $100\text{ MHz}$ y $+0,015\text{ ns}$ en la compilación extendida de $27.993$ endpoints), garantizando la viabilidad física del procesador sobre la tarjeta Nexys A7.
+    \item \textbf{Fallo de Tiempo en el Núcleo Baseline:} El diseño inicial violaba el tiempo de ciclo a 100 MHz ($\text{WNS} = -0,039\text{ ns}$ con 2 
+    \textit{failing endpoints}), debido a la dilatada cadena combinacional en la resolución estática de saltos y direccionamiento del bus.
+    \item \textbf{Mejora con BHT y Desacoplamiento:} La inserción del predictor BHT y el registro de la dirección de predicción en \textit{Fetch} rompieron la cadena 
+    combinacional, elevando el slack a un holgado $\text{WNS} = +0,319\text{ ns}$.
+    \item \textbf{Estabilidad en el Sistema Final L1+BHT:} La inclusión de las cachés de datos e instrucciones y las FSMs de control incrementaron la lógica 
+    ($26.222$ endpoints procesados), pero el diseño mantuvo un margen positivo confiable ($\text{WNS} = +0,036\text{ ns}$ a $100\text{ MHz}$ y $+0,015\text{ ns}$ en 
+    la compilación extendida de $27.993$ endpoints), garantizando la viabilidad física del procesador sobre la tarjeta Nexys A7.
 \end{enumerate}
 
 
