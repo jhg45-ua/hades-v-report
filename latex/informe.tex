@@ -292,7 +292,7 @@ proporcionaba un flujo de trabajo compuesto por:
 \begin{itemize}
     \item \textbf{Simulación de Ciclo Exacto (Verilator \cite{verilator}):} Uso de \textbf{Verilator} para compilar la descripción del circuito escrita en SystemVerilog a un 
     ejecutable C++, permitiendo simular millones de ciclos de reloj por segundo y depurar fallos mediante trazas de señales (\textit{waveforms}).
-    \item \textbf{Síntesis e Implementación Física (Xilinx Vivado):} Toolchain \textbf{AMD Xilinx Vivado} ejecutada mediante scripts automatizados 
+    \item \textbf{Síntesis e Implementación Física (Xilinx Vivado):} Toolchain \textbf{AMD Xilinx Vivado} \cite{vivado} ejecutada mediante scripts automatizados 
     Tcl y un \textit{Makefile} principal, encargada de traducir el código SystemVerilog a puertas lógicas y cables físicos sobre el chip FPGA.
     \item \textbf{Toolchain de Software y Co-Diseño:} Uso del compilador \texttt{riscv64-unknown-elf-gcc} restringido al subconjunto de enteros 
     \texttt{-march=rv32i -mabi=ilp32} \cite{riscv_spec}. Los binarios finales se cargan en la FPGA mediante un \textit{Bootloader} residente en la memoria interna de la placa 
@@ -952,7 +952,7 @@ $100\text{ MHz}$, el registro de destino capturará una señal inestable o corru
 \textbf{Cierre Temporal} (\textit{Timing Closure}, caracterizado por un $\text{WNS} \ge 0$) es el requisito físico imprescindible que certifica que el 
 procesador operará a $100\text{ MHz}$ de forma determinista, estable y térmicamente segura en la tarjeta FPGA.
 
-La evolución física del diseño sintetizado para la FPGA \textbf{Digilent Nexys A7-100T} se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
+La evolución física del diseño sintetizado para la FPGA \textbf{Digilent Nexys A7-100T} \cite{nexys_a7} se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
 
 \begin{table}[H]
 \centering
@@ -1053,7 +1053,7 @@ La arquitectura consolidada de HaDes-V constituye una base sólida para abordar 
 \begin{thebibliography}{99}
 
 \bibitem{hennessy2025}
-J.~L. Hennessy and D.~A. Patterson, \textit{Computer Architecture: A Quantitative Approach}, 7th~ed., Morgan Kaufmann, 2025.
+J.~L. Hennessy, D.~A. Patterson, and C.~Kozyrakis, \textit{Computer Architecture: A Quantitative Approach}, 7th~ed., Morgan Kaufmann, 2025.
 
 \bibitem{scheipel2024}
 T.~Scheipel, D.~Beikircher, and F.~Riedl, \textit{Microcontroller Design, Laboratory Instruction Guide: HADES-V}, Graz University of Technology, Dec. 2024.
@@ -1068,7 +1068,7 @@ OpenCores, \textit{WISHBONE System-on-Chip (SoC) Interconnection Architecture fo
 W.~Snyder et~al., \textit{Verilator: Open-source SystemVerilog Simulator and C++ Testbench Generator}, [Online]. Available: \url{https://www.veripool.org/verilator/}.
 
 \bibitem{vivado}
-AMD Xilinx, \textit{Vivado Design Suite User Guide: Design Flows Overview}, UG888 (v2025.2.1), 2025.
+AMD Xilinx, \textit{Vivado Design Suite User Guide: Design Flows Overview}, UG888 (v2025.2.1), 2026.
 
 \bibitem{nexys_a7}
 Digilent, \textit{Nexys A7 Reference Manual: Artix-7 FPGA Board for Student Designs}, Digilent Inc., 2022.
