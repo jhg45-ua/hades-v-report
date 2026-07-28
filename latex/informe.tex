@@ -145,7 +145,7 @@
 \Large Informe sobre la participación en el \textit{Community Challenge with HaDes-V} de RISC-V International}
 \author{\textbf{Julián Hinojosa Gil}\\[0.1cm]
 \small Estudiante Ingeniería Informática | Universidad de Alicante\\}
-\date{\small Versión 1.0 -- \today}
+\date{\small Versión 1.1 -- \today}
 
 \begin{document}
 
@@ -189,7 +189,7 @@ Para comprender el punto de partida sin perderse en tecnicismos y siglas, es imp
     \item \textbf{RISC-V (RV32I):} Arquitectura de conjunto de instrucciones (\textit{ISA}) abierta y libre de 32 bits \cite{riscv_spec}. La especificación 
     \texttt{RV32I} constituye el subconjunto base de instrucciones enteras (operaciones aritmético-lógicas, accesos a memoria y saltos de control), actuando como 
     el «vocabulario estándar» que entiende el procesador.
-    \item \textbf{Procesador Escalar:} Modelo microarquitectónico donde la el cauce de instrucciones emite y retira como máximo una única instrucción por ciclo 
+    \item \textbf{Procesador Escalar:} Modelo microarquitectónico donde el cauce de instrucciones emite y retira como máximo una única instrucción por ciclo 
     de reloj ($IPC_{ideal} = 1,0$), procesando operandos sobre un único canal de datos (a diferencia de arquitecturas superescalares de múltiple emisión o 
     procesadores vectoriales).
     \item \textbf{Ejecución \textit{Bare-Metal}:} Paradigma de funcionamiento en el cual el programa ejecutable interactúa directamente sobre la electrónica y los 
@@ -253,7 +253,7 @@ Para superar ambos muros, en este trabajo se diseñaron e implementaron sobre el
     activada mediante la instrucción \texttt{FENCE.I} \cite{riscv_spec} para evitar el problema del «código zombie» al cargar programas vía UART.
 \end{enumerate}
 
-\subsection{Estructura de la Memoria}
+\subsection{Estructura del Informe}
 El resto de este informe se organiza como sigue: El \textbf{Capítulo 2} detalla el contexto del desafío organizado por RISC-V International y la arquitectura
 inicial. El \textbf{Capítulo 3} explica el diseño detallado de la BHT, las cachés L1 y la telemetría. El \textbf{Capítulo 4} expone el análisis (\textit{Post-Mortem}) 
 del desarrollo, analizando fallos reales de hardware. El \textbf{Capítulo 5} presenta la evaluación cuantitativa de rendimiento sobre los
@@ -398,10 +398,10 @@ las futuras ejecuciones del bucle.
         \draw[thick] (2.2,4.6) -- (2.2,5.3);
         \draw[thick] (6.0,4.6) -- (6.0,5.3);
         \node at (1.1,4.95) {\tiny PC[31:12]};
-        \node at (4.1,4.95) {\textbf{\small PC[11:2]}};
+        \node at (4.1,4.95) {\textbf{\small PC[13:2]}};
         \node at (6.75,4.95) {\tiny PC[1:0]};
         \node[above] at (1.1,5.3) {\tiny Ignorados};
-        \node[above, color=blue!80!black] at (4.1,5.3) {\textbf{\tiny ÍNDICE BHT (10 bits)}};
+        \node[above, color=blue!80!black] at (4.1,5.3) {\textbf{\tiny ÍNDICE BHT (12 bits)}};
         \node[above] at (6.75,5.3) {\tiny \texttt{2'b00}};
 
         % Flecha del Índice hacia la columna de Entrada
@@ -432,14 +432,14 @@ las futuras ejecuciones del bucle.
         % Fila Seleccionada (Highlighted)
         \draw[fill=blue!15, thick] (1.2,1.0) rectangle (6.8,1.4);
         \draw[thick] (4.1,1.0) -- (4.1,1.4);
-        \node at (2.65,1.2) {\textbf{\tiny Índice PC[11:2]}};
+        \node at (2.65,1.2) {\textbf{\tiny Índice PC[13:2]}};
         \node at (5.45,1.2) {\textbf{\tiny \texttt{10} (Weakly T)}};
 
         \node at (2.65,0.7) {\tiny \dots};
         \node at (5.45,0.7) {\tiny \dots};
 
         \draw (1.2,0.6) -- (6.8,0.6);
-        \node at (2.65,0.4) {\tiny \texttt{0x3FF} (Entrada 1023)};
+        \node at (2.65,0.4) {\tiny \texttt{0xFFF} (Entrada 4095)};
         \node at (5.45,0.4) {\tiny \texttt{00} (Strongly NT)};
 
         % Salida de Predicción
@@ -485,8 +485,8 @@ las futuras ejecuciones del bucle.
 
 El funcionamiento en el cauce de instrucciones se ilustra en la Figura \ref{fig:bht_complete_diagram}:
 \begin{enumerate}
-    \item \textbf{Etapa de Fetch (IF):} Como se muestra en la Figura \ref{fig:bht_complete_diagram}(a), se consulta la BHT utilizando los 10 bits centrales de
-    la dirección (\texttt{PC[11:2]}). Si el contador indica que el salto debe tomarse (\texttt{1X}), el procesador redirige inmediatamente el PC hacia la
+    \item \textbf{Etapa de Fetch (IF):} Como se muestra en la Figura \ref{fig:bht_complete_diagram}(a), se consulta la BHT utilizando los 12 bits centrales de
+    la dirección (\texttt{PC[13:2]}). Si el contador indica que el salto debe tomarse (\texttt{1X}), el procesador redirige inmediatamente el PC hacia la
     dirección de destino del salto en el siguiente ciclo.
     \item \textbf{Etapa de Execute (EX):} La ALU resuelve la condición real. Si la predicción fue correcta, la ejecución continúa a latencia cero. Si hubo un
     error de especulación (\textit{mispredict}), la etapa de Execute emite una purga (\textit{flush}) de 2 ciclos, corrige el PC y actualiza el estado en la BHT
@@ -629,7 +629,7 @@ Ambas memorias emplean líneas de ráfaga de 4 palabras (16 bytes) para explotar
 (\textit{Miss}), el módulo \textbf{Árbitro Wishbone} (situado en la capa inferior de la Figura \ref{fig:modified_harvard_architecture}) gestiona la prioridad
 del bus, trayendo un bloque contiguo desde la RAM principal.
 
-\subsubsection{Write Buffer Asíncrono y Enrutamiento MMIO}
+\subsubsection{Write Buffer no bloqueante y Enrutamiento MMIO}
 Para mitigar la latencia en las operaciones de escritura (\texttt{STORE}), se interpuso un \textbf{Write Buffer} (cola FIFO asíncrona de 2 entradas) a la
 salida de la D-Cache. Bajo la política de diseño \textit{"Fire \& Forget"}, cuando la CPU ejecuta una instrucción \texttt{SW}, deposita el dato en la FIFO
 ("deja la carta en el buzón") y continúa su ejecución en \textbf{0 ciclos de parada}, mientras el buffer drena los datos hacia la RAM en segundo plano.
@@ -653,7 +653,7 @@ todos los bits de validez (\textit{valid bits}) de la I-Cache, forzando a la eta
 
 \subsection{Filosofía del Análisis Post-Mortem}
 El verdadero reto al diseñar un procesador segmentado radica en garantizar la corrección del \textbf{cauce de instrucciones} durante eventos no deterministas, como 
-purgas de la tubería, paradas de memoria o accesos desalineados al bus. La integración del esquema BHT y el subsitema L1 expuso fallos críticos de 
+purgas de la tubería, paradas de memoria o accesos desalineados al bus. La integración del esquema BHT y el subsistema L1 expuso fallos críticos de 
 sincronización que requerían un diagnóstico riguroso. A continuación, se exponen los casos de estudio más relevantes y sus soluciones.
 
 \subsection{Depuración del Control e I-Cache}
@@ -664,7 +664,7 @@ sincronización que requerían un diagnóstico riguroso. A continuación, se exp
 
     \textbf{Causa:} El fallo no residía en el RTL de SystemVerilog. Al modificar la jerarquía de módulos, el simulador \textbf{Verilator} \cite{verilator} (compilado a C++)
     generó una semilla de aleatorización distinta para los registros no inicializados explícitamente. Mientras que la FPGA Xilinx infiere un reseteo implícito a
-    cero (\textit{Strongly Not-Taken}), Verilator arrancó la mitad de las 4096 entradas ($2^9 = 512$) en el estado inverso (\textit{Strongly Taken}), provocando un
+    cero (\textit{Strongly Not-Taken}), Verilator arrancó la mitad de las 4096 entradas ($2^{11} = 2.048$) en el estado inverso (\textit{Strongly Taken}), provocando un
     patrón masivo de errores de especulación iniciales.
 
     \textbf{Lección:} El entorno de simulación por software no siempre replica el comportamiento de encendido (\textit{power-on reset}) del silicio
@@ -688,10 +688,10 @@ sincronización que requerían un diagnóstico riguroso. A continuación, se exp
     \textbf{Síntoma:} En ejecuciones con saltos frecuentes, la I-Cache sobreescribía líneas de instrucciones válidas con direcciones corruptas (como 
     \texttt{0x3FFFFFDE}), provocando fallos fatales en el bus Wishbone.
 
-    \textbf{Causa:} Cuando ocurría un fallo de caché (\textit{Miss}), la FSM tardaba varios ciclos en traer la ráfaga de 4 palabras desde la RAM. Mientras la
-    CPU estaba congelada esperando los datos, la etapa de \textit{Execute} resolvió un salto mal predicho y emitió un \textit{Flush}, cambiando instantáneamente los
-    cables combinacionales del PC de entrada. Al terminar de leer la RAM, la caché utilizó las señales combinacionales del \textit{nuevo} PC para guardar los datos
-    del \textit{viejo} PC.
+    \textbf{Causa:} Cuando ocurría un fallo de caché (\textit{Miss}), la «máquina de estados finitos —Finite-State Machine—» (FSM) tardaba varios ciclos en traer la 
+    ráfaga de 4 palabras desde la RAM. Mientras la CPU estaba congelada esperando los datos, la etapa de \textit{Execute} resolvió un salto mal predicho y emitió un 
+    \textit{Flush}, cambiando instantáneamente los cables combinacionales del PC de entrada. Al terminar de leer la RAM, la caché utilizó las señales combinacionales 
+    del \textit{nuevo} PC para guardar los datos del \textit{viejo} PC.
 
     \textbf{Lección:} Una memoria caché jamás debe confiar en los cables combinacionales de entrada de la CPU en el momento de escribir en sus memorias
     internas. Es obligatorio registrar e inmovilizar la dirección base del fallo mediante un registro de retención inmutable (\texttt{fetch\_base\_adr}).
@@ -790,7 +790,7 @@ funcional para cada programa, como se detalla en la Tabla \ref{tab:instruction_m
         \textbf{Benchmark} & \textbf{Instrucciones} & \textbf{ALU} & \textbf{LOADs} & \textbf{STORES} & \textbf{BRANCHES} & \textbf{JUMPs} & \textbf{EXC} \\
         \midrule
             Bubble Sort    &        25.467          &     5.447    &       9.900    &       110       &        9.999      &        0       &       0      \\
-            Matrix Mult    &        13.342          &     7.942    &       1.041    &       100       &        3.224      &      1.024     &       0      \\
+            Matrix Mult    &        13.342          &     7.942    &       1.041    &       100       &        3.224      &      1024     &       0      \\
             Memory Copy    &        2.330           &     1.284    &       256      &       523       &        256        &        0       &       0      \\
             Fibonacci      &        9.650           &     5.878    &       875      &       886       &        2.000      &        0       &       0      \\
         \bottomrule
@@ -801,8 +801,8 @@ El análisis del \textit{Instruction Mix} revela particularidades críticas de c
 \begin{enumerate}
     \item \textbf{Dominancia de Saltos en Bubble Sort:} El $39,2\%$ de las instrucciones corresponden a saltos condicionales (\texttt{BRANCHES}), convirtiéndolo 
     en el escenario óptimo para evaluar la eficiencia del predictor BHT.
-    \item \textbf{Anomalía de Saltos Incondicionales en Matrix Mult:} Presenta $1.024$ instrucciones de salto incondicional (\texttt{JUMP}). Al carecer de
-    multiplicador por hardware (extensión RV32M), la toolchain GCC genera $1.024$ llamadas a la función \texttt{\_\_mulsi3}, justificando plenamente la necesidad
+    \item \textbf{Anomalía de Saltos Incondicionales en Matrix Mult:} Presenta $1024$ instrucciones de salto incondicional (\texttt{JUMP}). Al carecer de
+    multiplicador por hardware (extensión RV32M), la toolchain GCC genera $1024$ llamadas a la función \texttt{\_\_mulsi3}, justificando plenamente la necesidad
     del mecanismo \textit{JAL Bypass}.
     \item \textbf{Predominio de Escrituras en Memory Copy:} Contiene $523$ operaciones \texttt{STORE} frente a $256$ \texttt{LOADs}, actuando como prueba de
     fuego para el \textit{Write Buffer} asíncrono.
@@ -851,18 +851,18 @@ Aplicando la penalización fija de $2$ ciclos por error de especulación:
     \text{Ciclos Teóricos Esperados} = 50.314 - 19.596 = 30.718 \text{ ciclos}
 \end{equation}
 
-El contador de hardware capturó exactamente \textbf{$30.718$ ciclos} en la versión BHT pura, confirmando el determinismo absoluto del hardware y elevando el IPC de
-$0,506$ a $0,829$.
+El contador de hardware capturó exactamente \textbf{$30.718$ ciclos} en la versión BHT pura, confirmando la coincidencia exacta con el modelo teórico en esta prueba 
+y elevando el IPC de $0,506$ a $0,829$.
 
 \subsubsection{Análisis de Aliasing y Capacidad: BHT 1K vs. BHT 4K}
 \begin{conceptbox}{El Punto Dulce del Predictor Bimodal}
-    En la literatura fundamental de arquitectura de computadores, Hennessy y Patterson establecen que una BHT de \textbf{$4.096$ entradas (4K)} representa el «punto 
+    En la literatura fundamental de arquitectura de computadores, Hennessy y Patterson establecen que una BHT de \textbf{$4096$ entradas (4K)} representa el «punto 
     dulce» \cite{hennessy2025} (\textit{sweet spot}) en predictores bimodales de 2 bits. Con un consumo estricto de $1\text{ KB}$ de SRAM ($8.192\text{ bits}$), esta 
     capacidad maximiza la tasa de aciertos eliminando prácticamente el \textit{aliasing} (colisiones de saltos distintos en la misma celda) antes de alcanzar la zona 
     de rendimientos decrecientes.
 \end{conceptbox}
 
-Durante la fase de caracterización se evaluó el comportamiento del procesador variando la capacidad de la BHT entre $1.024$ ($1\text{K}$) y $4.096$ ($4\text{K}$) 
+Durante la fase de caracterización se evaluó el comportamiento del procesador variando la capacidad de la BHT entre $1024$ ($1\text{K}$) y $4096$ ($4\text{K}$) 
 entradas. En la suite de microbenchmarks sintéticos evaluada, ambas configuraciones registraron recuentos de ciclos y purgas de segmentación estrictamente idénticos 
 ($101$ \textit{flushes} en \textit{Bubble Sort HOT}, $1$ \textit{flush} en \textit{Memory Copy HOT} y $126$ \textit{flushes} en \textit{Fibonacci HOT}).
 
@@ -871,17 +871,17 @@ instrucciones de salto condicional activas. En este escenario acotado, incluso l
 suficientes para evitar solapamientos de direcciones en la tabla.
 
 Sin embargo, para garantizar que el procesador HaDes-V sea capaz de ejecutar programas reales de mayor escala y densidad de código sin degradar su rendimiento por 
-\textit{aliasing}, \textbf{se seleccionó como arquitectura final la configuración de $4.096$ entradas ($4\text{K}$)}.
+\textit{aliasing}, \textbf{se seleccionó como arquitectura final la configuración de $4096$ entradas ($4\text{K}$)}.
 
 El análisis de recursos sobre la FPGA Artix-7 demuestra la alta eficiencia de esta elección:
 \begin{itemize}
-    \item \textbf{BHT de 1K Entradas:} Requiere $1.024 \times 2 \text{ bits} = 2.048 \text{ bits}$ ($256\text{ Bytes}$ / $0,25\text{ KB}$).
-    \item \textbf{BHT de 4K Entradas (Diseño Definitivo):} Requiere $4.096 \times 2 \text{ bits} = 8.192 \text{ bits}$ ($\mathbf{1.024\text{ Bytes}}$ 
+    \item \textbf{BHT de 1K Entradas:} Requiere $1024 \times 2 \text{ bits} = 2.048 \text{ bits}$ ($256\text{ Bytes}$ / $0,25\text{ KB}$).
+    \item \textbf{BHT de 4K Entradas (Diseño Definitivo):} Requiere $4096 \times 2 \text{ bits} = 8.192 \text{ bits}$ ($\mathbf{1024\text{ Bytes}}$ 
     / $\mathbf{1\text{ KB}}$ de LUTRAM/SRAM).
 \end{itemize}
 
 Dado que cuatriplicar la capacidad especulativa solo representa el $1\%$ del uso total de LUTRAM de la FPGA Nexys A7 y no penaliza la frecuencia de reloj 
-($100\text{ MHz}$ garantizados), el diseño final consolida la BHT de $4\text{K}$ entradas, alineando el núcleo con los estándares de rendimiento de la industria.
+($100\text{ MHz}$ garantizados), el diseño final consolida la BHT de $4\text{K}$ entradas, adoptando una capacidad clásica para este tipo de predictor.
 
 \subsubsection{Eficiencia del Subsistema L1 y Absorción de Latencias}
 Es importante destacar que la incorporación de la jerarquía de memoria L1 no se traduce en un incremento neto del IPC nominal con respecto a la versión con BHT pura 
@@ -989,8 +989,8 @@ Un resultado fundamental de la fase de optimización es la recuperación y conso
     \item \textbf{Mejora con BHT y Desacoplamiento:} La inserción del predictor BHT y el registro de la dirección de predicción en \textit{Fetch} rompieron la cadena 
     combinacional, elevando el slack a un holgado $\text{WNS} = +0,319\text{ ns}$.
     \item \textbf{Estabilidad en el Sistema Final L1+BHT:} La inclusión de las cachés de datos e instrucciones y las FSMs de control incrementaron la lógica 
-    ($26.222$ endpoints procesados), pero el diseño mantuvo un margen positivo confiable ($\text{WNS} = +0,036\text{ ns}$ a $100\text{ MHz}$ y $+0,015\text{ ns}$ en 
-    la compilación extendida de $27.993$ endpoints), garantizando la viabilidad física del procesador sobre la tarjeta Nexys A7.
+    ($26.222$ endpoints procesados), pero el diseño mantuvo un cierre temporal positivo, aunque con un margen reducido ($\text{WNS} = +0,036\text{ ns}$ a 
+    $100\text{ MHz}$ y $+0,015\text{ ns}$ en la compilación extendida de $27.993$ endpoints), garantizando la viabilidad física del procesador sobre la tarjeta Nexys A7.
 \end{enumerate}
 
 
@@ -1006,7 +1006,7 @@ procesador docente básico de 5 etapas en un microcontrolador de mayor rendimien
 
 A lo largo del proyecto se han alcanzado los siguientes hitos fundamentales:
 \begin{enumerate}
-    \item \textbf{Especulación de Control Eficiente:} La integración de la \textit{Branch History Table} (BHT) de $4096$ entradas con contadores saturantes d
+    \item \textbf{Especulación de Control Eficiente:} La integración de la \textit{Branch History Table} (BHT) de $4096$ entradas con contadores saturantes de
     2 bits y el mecanismo \textit{JAL Bypass} eliminó el $99\%$ de las purgas de segmentación en bucles iterativos (\textit{Bubble Sort} redujo sus
     \textit{flushes} de $9.899$ a $101$), elevando el IPC base de $0,506$ a $0,829$.
     \item \textbf{Jerarquía L1 Harvard Modificada:} La separación en I-Cache y D-Cache de $4\text{ KB}$ junto con el \textit{Write Buffer} asíncrono 
@@ -1037,7 +1037,7 @@ El análisis post-mortem de las diferentes fases del desarrollo ha puesto de man
 La arquitectura consolidada de HaDes-V constituye una base sólida para abordar futuras ampliaciones en tres grandes vectores:
 
 \begin{enumerate}
-    \item \textbf{Extensión de Multiplicación/División por Hardware (RV32M):} Incorporar una unidad multiplicadora segmentada para eliminar las $1.024$
+    \item \textbf{Extensión de Multiplicación/División por Hardware (RV32M):} Incorporar una unidad multiplicadora segmentada para eliminar las $1024$
     llamadas a la subrutina de software \texttt{\_\_mulsi3} detectadas en el \textit{Instruction Mix}, permitiendo que cargas aritméticas alcancen el límite
     escalar ($IPC \approx 1,0$).
     \item \textbf{Especulación Global Correlacionada (Predictor Gshare):} Evolucionar la BHT bimodal hacia un predictor de tipo \textit{Gshare} \cite{hennessy2025} que combine el
