@@ -295,7 +295,7 @@ proporcionaba un flujo de trabajo compuesto por:
     \item \textbf{Síntesis e Implementación Física (Xilinx Vivado):} Toolchain \textbf{AMD Xilinx Vivado} \cite{vivado} ejecutada mediante scripts automatizados 
     Tcl y un \textit{Makefile} principal, encargada de traducir el código SystemVerilog a puertas lógicas y cables físicos sobre el chip FPGA.
     \item \textbf{Toolchain de Software y Co-Diseño:} Uso del compilador \texttt{riscv32-unknown-elf-gcc} restringido al subconjunto de enteros 
-    \texttt{-with-arch=rv32i} \cite{riscv_spec} \cite{scheipel2024}. Los binarios finales se cargan en la FPGA mediante un \textit{Bootloader} residente en la memoria 
+    \texttt{-with-arch=rv32i} \cite{scheipel2024} \cite{riscv_spec}. Los binarios finales se cargan en la FPGA mediante un \textit{Bootloader} residente en la memoria 
     interna de la placa comunicándose por enlace serie UART.
 \end{itemize}
 
