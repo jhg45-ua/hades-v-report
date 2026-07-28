@@ -145,7 +145,7 @@
 \Large Informe sobre la participación en el \textit{Community Challenge with HaDes-V} de RISC-V International}
 \author{\textbf{Julián Hinojosa Gil}\\[0.1cm]
 \small Estudiante Ingeniería Informática | Universidad de Alicante\\}
-\date{\today}
+\date{\small Versión 1.0 \quad|\quad \today}
 
 \begin{document}
 
@@ -156,7 +156,7 @@
     implementar un núcleo docente escalar de 32 bits conforme a la especificación libre \textbf{RISC-V (RV32I)} con segmentación de 5 etapas, se diseñó e integró un 
     sistema de especulación de control compuesto por un predictor de saltos dinámico bimodal (\textit{Branch History Table} - BHT) de $4096$ entradas con contadores 
     saturantes  de 2 bits y un acelerador de saltos incondicionales (\textit{JAL Bypass}). Posteriormente, se resolvió el «Muro de la Memoria» mediante una jerarquía 
-    L1 en \textbf{Arquitectura Harvard Modificada}, incorporando una caché de instrucciones (I-Cache), una caché de datos de 4 KB (D-Cache), un \textit{Write Buffer} asíncrono
+    L1 en \textbf{Arquitectura Harvard Modificada}, incorporando una caché de instrucciones de 4 KB (I-Cache), una caché de datos de 4 KB (D-Cache), un \textit{Write Buffer} asíncrono
     con política \textit{Fire \& Forget} y una línea de invalidación por hardware para mantener la coherencia de código mediante la instrucción \texttt{FENCE.I}.
     La telemetría en hardware mediante contadores de rendimiento (HPCs) en la etapa de \textit{Writeback} permitió validar un incremento de rendimiento del $63,8\%$ 
     (elevando el IPC de $0,506$ a $0,829$) y eliminar hasta un $85,6\%$ de las paradas de memoria. El procesador fue sintetizado en la FPGA 
@@ -189,6 +189,9 @@ Para comprender el punto de partida sin perderse en tecnicismos y siglas, es imp
     \item \textbf{RISC-V (RV32I):} Arquitectura de conjunto de instrucciones (\textit{ISA}) abierta y libre de 32 bits \cite{riscv_spec}. La especificación 
     \texttt{RV32I} constituye el subconjunto base de instrucciones enteras (operaciones aritmético-lógicas, accesos a memoria y saltos de control), actuando como 
     el «vocabulario estándar» que entiende el procesador.
+    \item \textbf{Procesador Escalar:} Modelo microarquitectónico donde la el cauce de instrucciones emite y retira como máximo una única instrucción por ciclo 
+    de reloj ($IPC_{ideal} = 1,0$), procesando operandos sobre un único canal de datos (a diferencia de arquitecturas superescalares de múltiple emisión o 
+    procesadores vectoriales).
     \item \textbf{Ejecución \textit{Bare-Metal}:} Paradigma de funcionamiento en el cual el programa ejecutable interactúa directamente sobre la electrónica y los 
     registros del hardware, sin capas de abstracción ni la intermediación de un sistema operativo.
     \item \textbf{Modo Máquina (M-Mode):} Nivel de privilegio de ejecución único implementado en el procesador, que otorga acceso directo, completo e irrestricto a 
@@ -198,6 +201,8 @@ Para comprender el punto de partida sin perderse en tecnicismos y siglas, es imp
     \item \textbf{MMIO (\textit{Memory-Mapped I/O}):} Esquema de entrada/salida donde los registros de control de los periféricos (UART, LEDs, contadores de 
     rendimiento) se ubican dentro del mismo espacio de direccionamiento que la RAM, permitiendo su acceso mediante instrucciones estándar de lectura y escritura 
     (\texttt{LW}/\texttt{SW}).
+    \item \textbf{Interfaz Serie UART (\textit{Universal Asynchronous Receiver-Transmitter}):} Protocolo de comunicación serie asíncrono empleado por el 
+    \textit{Bootloader} para recibir los programas ejecutables desde el ordenador anfitrión y cargarlos dinámicamente en la memoria del microcontrolador.
     \item \textbf{Registros CSR (\textit{Control and Status Registers}):} Registros del sistema pertenecientes a la especificación RISC-V (independientes del banco 
     de registros general \texttt{x0}--\texttt{x31}) destinados a la configuración, consulta del estado interno del procesador y extracción de telemetría de rendimiento 
     en hardware.
@@ -557,7 +562,7 @@ topología general se ilustra en la Figura \ref{fig:modified_harvard_architectur
 
         % 2. NIVEL L1 (Cachés Independientes - Visión Harvard)
         \draw[thick, fill=green!10, rounded corners=2mm] (0.0, 2.5) rectangle (3.2, 4.2);
-        \node[align=center] at (1.6, 3.35) {\textbf{\small I-Cache L1}\\[-2pt]\tiny Mapeo Directo};
+        \node[align=center] at (1.6, 3.35) {\textbf{\small I-Cache L1 (4KB)}\\[-2pt]\tiny Mapeo Directo};
 
         \draw[thick, fill=orange!10, rounded corners=2mm] (5.2, 2.5) rectangle (8.4, 4.2);
         \node[align=center] at (6.8, 3.35) {\textbf{\small D-Cache L1 (4KB)}\\[-2pt]\tiny Mapeo Directo};
@@ -614,7 +619,7 @@ Como se observa en el diagrama de la Figura \ref{fig:modified_harvard_architectu
 memorias caché independientes de mapeo directo (\textit{Direct-Mapped}):
 
 \begin{itemize}
-    \item \textbf{Caché L1 de Instrucciones (I-Cache):} Interconectada con la etapa de \textit{Fetch}, suministra instrucciones al procesador a latencia cero
+    \item \textbf{Caché L1 de Instrucciones (I-Cache):} Con una capacidad de $4\text{ KB}$, está interconectada con la etapa de \textit{Fetch} y suministra instrucciones al procesador a latencia cero
     (0 ciclos de penalización en caso de acierto o \textit{Hit}).
     \item \textbf{Caché L1 de Datos (D-Cache):} Con una capacidad de 4 KB, gestiona los accesos de lectura y escritura de la etapa de \textit{Memory} operando
     con direccionamiento a nivel de palabra (\textit{Word Address}).
@@ -713,7 +718,7 @@ sincronización que requerían un diagnóstico riguroso. A continuación, se exp
     \textbf{Causa:} El tamaño de la caché era insuficiente para albergar el vector de datos procesado por el algoritmo. Las iteraciones del bucle provocaban que
     los accesos a datos expulsaran continuamente a las líneas recién cargadas (\textit{Thrashing} de capacidad), anulando el beneficio de la pasada caliente.
 
-    \textbf{Lección:} Al escalar la D-Cache a \textbf{4 KB} (128 líneas de 16 bytes), la pasada HOT logró retener la totalidad de la estructura de
+    \textbf{Lección:} Al escalar la D-Cache a \textbf{4 KB} (256 líneas de 16 bytes), la pasada HOT logró retener la totalidad de la estructura de
     datos en SRAM interna, reduciendo los accesos al bus principal al mínimo técnico.
 \end{bugbox}
 
@@ -734,7 +739,7 @@ sincronización que requerían un diagnóstico riguroso. A continuación, se exp
     nuevo programa, pero ejecutaba instrucciones obsoletas del programa anterior o entraba en trampa de excepción.
 
     \textbf{Causa:} Conflicto de coherencia en la arquitectura Harvard. El Bootloader escribió el nuevo programa en la RAM a través de la interfaz de datos
-    (D-Cache / Write Buffer). Sin embargo, la I-Cache mantenía almacenadas en sus líneas las instrucciones del ejecutable antiguo ("código zombie"), entregándolas
+    (D-Cache / Write Buffer). Sin embargo, la I-Cache mantenía almacenadas en sus líneas las instrucciones del ejecutable antiguo (``código zombie''), entregándolas
     a la etapa de \textit{Fetch} en lugar de leer la RAM actualizada.
 
     \textbf{Lección:} Se implementó una línea de invalidación por hardware (\texttt{fence\_i\_flush\_out}). Al decodificar en \textit{Writeback}
@@ -955,25 +960,25 @@ procesador operará a $100\text{ MHz}$ de forma determinista, estable y térmica
 La evolución física del diseño sintetizado para la FPGA \textbf{Digilent Nexys A7-100T} \cite{nexys_a7} se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
 
 \begin{table}[H]
-    \centering
-    \small
-    \caption{Radiografía de síntesis física e implementación en AMD Xilinx Vivado.}
-    \label{tab:vivado_synthesis_evolution}
-    \begin{tabularx}{\textwidth}{L c c c}
-        \toprule
-        \textbf{Métrica de Síntesis} & \textbf{1. Baseline} & \textbf{2. BHT Predictor} & \textbf{3. L1 Cache + BHT (Final)} \\
-        \midrule
-        Worst Negative Slack (WNS) & \textbf{-0,039 ns (Falla)} & \textbf{+0,319 ns (Pasa)} & \textbf{+0,036 ns (Pasa)} \\
-        Total Negative Slack (TNS) & -0,042 ns & 0,000 ns & 0,000 ns \\
-        Failing Endpoints & 2 / 11.452 & 0 / 11.988 & 0 / 26.222 (27.993 Ext.) \\
-        Utilización de LUTs & 6.128 (9\%) & 5.975 (9\%) & 9.289 (15\%) \\
-        Utilización de LUTRAM & 0\% & 1\% & 10\% \\
-        Flip-Flops (FF) & 3\% & 3\% & 3\% \\
-        Bloques de Memoria (BRAM) & 34\% (46,5 BRAMs) & 34\% (46,5 BRAMs) & 34\% (46,5 BRAMs) \\
-        Consumo de Potencia (On-Chip) & 0,528 W & 0,532 W & 0,540 W \\
-        Margen Térmico & 57,6 $^\circ\text{C}$ & 57,6 $^\circ\text{C}$ & 57,5 $^\circ\text{C}$ \\
-        \bottomrule
-    \end{tabularx}
+\centering
+\small
+\caption{Radiografía de síntesis física e implementación en AMD Xilinx Vivado.}
+\label{tab:vivado_synthesis_evolution}
+\begin{tabularx}{\textwidth}{L c c c}
+\toprule
+\textbf{Métrica de Síntesis} & \textbf{1. Baseline} & \textbf{2. BHT Predictor} & \textbf{3. L1 Cache + BHT (Final)} \\
+\midrule
+Worst Negative Slack (WNS) & \textbf{-0,039 ns (Falla)} & \textbf{+0,319 ns (Pasa)} & \textbf{+0,036 ns (Pasa)} \\
+Total Negative Slack (TNS) & -0,042 ns & 0,000 ns & 0,000 ns \\
+Failing Endpoints & 2 / 11.452 & 0 / 11.988 & 0 / 26.222 (27.993 Ext.) \\
+Utilización de LUTs & 6.128 (9\%) & 5.975 (9\%) & 9.289 (15\%) \\
+Utilización de LUTRAM & 0\% & 1\% & 10\% \\
+Flip-Flops (FF) & 3\% & 3\% & 3\% \\
+Bloques de Memoria (BRAM) & 34\% (46,5 BRAMs) & 34\% (46,5 BRAMs) & 34\% (46,5 BRAMs) \\
+Consumo de Potencia (On-Chip) & 0,528 W & 0,532 W & 0,540 W \\
+Margen Térmico & 57,6 $^\circ\text{C}$ & 57,6 $^\circ\text{C}$ & 57,5 $^\circ\text{C}$ \\
+\bottomrule
+\end{tabularx}
 \end{table}
 
 \subsubsection{Análisis del Cierre Temporal y Evolución del Camino Crítico}
