@@ -1,4 +1,4 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[10pt,a4paper]{article}
 
 % ============================================================
 % PAQUETES BÁSICOS Y TIPOGRAFÍA
@@ -181,20 +181,20 @@
 % ============================================================
 
 \subsection{Presentación del Proyecto HaDes-V}
-El proyecto \textbf{HaDes-V} documenta la implementación de un diseño de procesador docente en un microcontrolador completamente funcional y desplegado en 
-hardware real. 
+El proyecto \textbf{HaDes-V} documenta la implementación de un diseño de procesador docente \cite{scheipel2024} en un microcontrolador completamente funcional 
+y desplegado en hardware real. 
 
 Para comprender el punto de partida sin perderse en tecnicismos y siglas, es importante definir las bases de la arquitectura:
 \begin{itemize}
-    \item \textbf{RISC-V (RV32I):} Arquitectura de conjunto de instrucciones (\textit{ISA}) abierta y libre de 32 bits. La especificación \texttt{RV32I} constituye 
-    el subconjunto base de instrucciones enteras (operaciones aritmético-lógicas, accesos a memoria y saltos de control), actuando como el «vocabulario estándar» 
-    que entiende el procesador.
+    \item \textbf{RISC-V (RV32I):} Arquitectura de conjunto de instrucciones (\textit{ISA}) abierta y libre de 32 bits \cite{riscv_spec}. La especificación 
+    \texttt{RV32I} constituye el subconjunto base de instrucciones enteras (operaciones aritmético-lógicas, accesos a memoria y saltos de control), actuando como 
+    el «vocabulario estándar» que entiende el procesador.
     \item \textbf{Ejecución \textit{Bare-Metal}:} Paradigma de funcionamiento en el cual el programa ejecutable interactúa directamente sobre la electrónica y los 
     registros del hardware, sin capas de abstracción ni la intermediación de un sistema operativo.
     \item \textbf{Modo Máquina (M-Mode):} Nivel de privilegio de ejecución único implementado en el procesador, que otorga acceso directo, completo e irrestricto a 
     todos los recursos físicos del silicio y a la gestión global del sistema.
-    \item \textbf{Bus Wishbone:} Estándar abierto e independiente de arquitectura para la interconexión síncrona en sistemas en chip (\textit{SoC}). Define la 
-    interfaz de señales mediante la cual la CPU se comunica con la jerarquía L1, la memoria RAM y los periféricos.
+    \item \textbf{Bus Wishbone:} Estándar abierto e independiente de arquitectura para la interconexión síncrona en sistemas en chip (\textit{SoC}) 
+    \cite{wishbone_spec}. Define la interfaz de señales mediante la cual la CPU se comunica con la jerarquía L1, la memoria RAM y los periféricos.
     \item \textbf{MMIO (\textit{Memory-Mapped I/O}):} Esquema de entrada/salida donde los registros de control de los periféricos (UART, LEDs, contadores de 
     rendimiento) se ubican dentro del mismo espacio de direccionamiento que la RAM, permitiendo su acceso mediante instrucciones estándar de lectura y escritura 
     (\texttt{LW}/\texttt{SW}).
@@ -209,7 +209,8 @@ Para comprender el punto de partida sin perderse en tecnicismos y siglas, es imp
 \subsection{Motivaciones para la mejora del diseño base: Los Muros del Control y de la Memoria}
 
 \begin{conceptbox}{El Límite del Rendimiento en Procesadores Escalares}
-    En un procesador segmentado ideal, el objetivo es completar una instrucción por ciclo de reloj ($CPI_{ideal} = 1.0$). Sin embargo, el rendimiento real está limitado por la suma de penalizaciones:
+    En un procesador segmentado ideal, el objetivo es completar una instrucción por ciclo de reloj ($CPI_{ideal} = 1.0$). Sin embargo, el rendimiento real está 
+    limitado por la suma de penalizaciones \cite{hennessy2025}:
     \begin{equation*}
         CPI_{real} = CPI_{ideal} + CPI_{control} + CPI_{memoria}
     \end{equation*}
@@ -244,7 +245,7 @@ Para superar ambos muros, en este trabajo se diseñaron e implementaron sobre el
     resuelve las llamadas a funciones (\texttt{JAL}) a coste de \textbf{0 ciclos de penalización}.
     \item \textbf{Jerarquía de Memoria L1 (Harvard Modificada) y Coherencia:} Separación en dos memorias caché ultrarrápidas de mapeo directo (I-Cache para
     instrucciones y D-Cache de 4 KB para datos), complementadas con un \textit{Write Buffer} asíncrono para escrituras y una línea de invalidación por hardware 
-    activada mediante la instrucción \texttt{FENCE.I} para evitar el problema del «código zombie» al cargar programas vía UART.
+    activada mediante la instrucción \texttt{FENCE.I} \cite{riscv_spec} para evitar el problema del «código zombie» al cargar programas vía UART.
 \end{enumerate}
 
 \subsection{Estructura de la Memoria}
@@ -261,8 +262,8 @@ microbenchmarks y los resultados de síntesis en la FPGA. Finalmente, el \textbf
 
 \subsection{El Community Challenge with HaDes-V}
 Este proyecto se ha desarrollado en el marco del \textit{Community Challenge with HaDes-V}, promovido por la organización global \textbf{RISC-V International} y
-organizado por el grupo de Arquitecturas y Sistemas Empotrados de la \textbf{Universidad Tecnológica de Graz (TU Graz)}. La iniciativa busca fomentar el
-aprendizaje práctico en el diseño y optimización de procesadores.
+organizado por el grupo de Arquitecturas y Sistemas Empotrados de la \textbf{Universidad Tecnológica de Graz (TU Graz)} \cite{scheipel2024}. La iniciativa busca 
+fomentar el aprendizaje práctico en el diseño y optimización de procesadores.
 
 El reto proponía a los participantes implementar primero una base común sobre un diseño de núcleo docente y, una vez completada esa línea base, diseñar e
 integrar cualquier tipo de mejora microarquitectónica, en el caso de este proyecto, para maximizar su rendimiento y eficiencia.
@@ -277,7 +278,7 @@ El núcleo de partida organiza su ruta de datos en una segmentación clásica de
     \item \textbf{Decode (ID):} Decodificación de la instrucción y lectura del banco de registros.
     \item \textbf{Execute (EX):} Cómputo en la Unidad Aritmético-Lógica (\textit{ALU}) y resolución condicional de saltos.
     \item \textbf{Memory (MEM):} Transacciones de lectura (\texttt{LW}) y escritura (\texttt{SW}) sobre la memoria principal mediante el bus estandarizado 
-    \textit{Wishbone}.
+    \textit{Wishbone} \cite{wishbone_spec}.
     \item \textbf{Writeback (WB):} Actualización del banco de registros con el resultado final.
 \end{enumerate}
 
@@ -289,12 +290,12 @@ Para la realización del proyecto (tanto para la implementación como para la si
 proporcionaba un flujo de trabajo compuesto por:
 
 \begin{itemize}
-    \item \textbf{Simulación de Ciclo Exacto (Verilator):} Uso de \textbf{Verilator} para compilar la descripción del circuito escrita en SystemVerilog a un 
+    \item \textbf{Simulación de Ciclo Exacto (Verilator \cite{verilator}):} Uso de \textbf{Verilator} para compilar la descripción del circuito escrita en SystemVerilog a un 
     ejecutable C++, permitiendo simular millones de ciclos de reloj por segundo y depurar fallos mediante trazas de señales (\textit{waveforms}).
     \item \textbf{Síntesis e Implementación Física (Xilinx Vivado):} Toolchain \textbf{AMD Xilinx Vivado} ejecutada mediante scripts automatizados 
     Tcl y un \textit{Makefile} principal, encargada de traducir el código SystemVerilog a puertas lógicas y cables físicos sobre el chip FPGA.
     \item \textbf{Toolchain de Software y Co-Diseño:} Uso del compilador \texttt{riscv64-unknown-elf-gcc} restringido al subconjunto de enteros 
-    \texttt{-march=rv32i -mabi=ilp32}. Los binarios finales se cargan en la FPGA mediante un \textit{Bootloader} residente en la memoria interna de la placa 
+    \texttt{-march=rv32i -mabi=ilp32} \cite{riscv_spec}. Los binarios finales se cargan en la FPGA mediante un \textit{Bootloader} residente en la memoria interna de la placa 
     comunicándose por enlace serie UART.
 \end{itemize}
 
@@ -345,7 +346,7 @@ El subsistema monitoriza en tiempo real y clasifica en la etapa de retiro (\text
 
 \subsubsection{Interfaz de Software mediante CSRs y Control del Efecto Observador}
 Para que el software pueda leer estas métricas sin sondas externas, los contadores se mapearon en el espacio de \textbf{Registros de Control y Estado} 
-(\textit{CSRs}) estándar de RISC-V (\texttt{mhpmcounter3}, \texttt{mhpmcounter4}, etc.), accesibles con la instrucción ensamblador \texttt{csrr} 
+(\textit{CSRs}) estándar de RISC-V \cite{riscv_spec} (\texttt{mhpmcounter3}, \texttt{mhpmcounter4}, etc.), accesibles con la instrucción ensamblador \texttt{csrr} 
 (\textit{CSR Read}).
 
 Al volcar la telemetría al final de la ejecución de una carga de trabajo, surge el conocido \textit{Efecto Observador}: la propia rutina encargada de leer 
@@ -363,7 +364,7 @@ Por tanto, en los casos donde esta asunción era incorrecta, se producía un \te
 \subsubsection{Predictor Dinámico Bimodal mediante BHT}
 Para mitigar este impacto, implementamos un predictor dinámico de saltos basado en una \textbf{Branch History Table (BHT)}. La BHT actúa como una memoria
 interna indexada por los bits inferiores de la dirección del Contador de Programa (\textit{PC}). En lugar de asumir un comportamiento fijo, la tabla almacena
-el historial reciente de cada instrucción de salto utilizando un contador de 2 bits con cuatro estados posibles:
+el historial reciente de cada instrucción de salto utilizando un contador de 2 bits con cuatro estados posibles \cite{hennessy2025}:
 
 \begin{itemize}
     \item \texttt{00} (\textit{Strongly Not-Taken} (SNT)): Predice no tomar el salto con máxima confianza; requiere dos fallos consecutivos para cambiar la tendencia 
@@ -514,8 +515,8 @@ que redirige el PC \textbf{a coste de 0 ciclos de parada o purga}.
 \end{conceptbox}
 
 En el núcleo procesador HaDes-V original, el sistema de memoria estaba estructurado bajo una arquitectura \textbf{Von Neumann pura} caracterizada por un único espacio 
-de direccionamiento y un solo bus interconector basado en la especificación \textit{Wishbone}. La memoria principal consistía en un bloque de RAM interna de la FPGA 
-(\textit{Block RAM} - BRAM) diseñado para responder a accesos en un ciclo ideal de latencia.
+de direccionamiento y un solo bus interconector basado en la especificación \textit{Wishbone} \cite{wishbone_spec}. La memoria principal consistía en un bloque de RAM
+interna de la FPGA (\textit{Block RAM} - BRAM) diseñado para responder a accesos en un ciclo ideal de latencia.
 
 Esta aproximación simplificaba significativamente el diseño RTL inicial al prescindir de controladores de memoria complejos. Sin embargo, al operar sobre una 
 segmentación de 5 etapas, este esquema introdujo un \textbf{riesgo estructural} (\textit{structural hazard}) severo:
@@ -535,76 +536,76 @@ topología general se ilustra en la Figura \ref{fig:modified_harvard_architectur
 % Figura: Diagrama de la jerarquía de memoria L1 Harvard Modificada
 \shorthandoff{<>}
 \begin{figure}[H]
-\centering
-\begin{tikzpicture}[scale=0.88, every node/.style={transform shape, font=\sffamily\small}]
+    \centering
+    \begin{tikzpicture}[scale=0.88, every node/.style={transform shape, font=\sffamily\small}]
 
-    % 1. BLOQUE DE LA CPU (Segmentación)
-    \draw[thick, fill=blue!5, rounded corners=3mm] (-0.5, 6.0) rectangle (11.5, 8.8);
-    \node[anchor=west, color=blue!80!black] at (0, 8.4) {\textbf{Núcleo Procesador HaDes-V (Pipeline de 5 Etapas)}};
-    
-    % Etapas internas
-    \draw[thick, fill=white] (0.2, 6.4) rectangle (1.8, 7.7) node[midway, align=center] {\textbf{\footnotesize Fetch}\\[-2pt]\tiny (IF)};
-    \draw[thick, fill=white] (2.4, 6.4) rectangle (4.0, 7.7) node[midway, align=center] {\textbf{\footnotesize Decode}\\[-2pt]\tiny (ID)};
-    \draw[thick, fill=white] (4.6, 6.4) rectangle (6.2, 7.7) node[midway, align=center] {\textbf{\footnotesize Execute}\\[-2pt]\tiny (EX)};
-    \draw[thick, fill=white] (6.8, 6.4) rectangle (8.4, 7.7) node[midway, align=center] {\textbf{\footnotesize Memory}\\[-2pt]\tiny (MEM)};
-    \draw[thick, fill=white] (9.0, 6.4) rectangle (10.8, 7.7) node[midway, align=center] {\textbf{\footnotesize Writeback}\\[-2pt]\tiny (WB)};
-    
-    \draw[->, thick] (1.8, 7.05) -- (2.4, 7.05);
-    \draw[->, thick] (4.0, 7.05) -- (4.6, 7.05);
-    \draw[->, thick] (6.2, 7.05) -- (6.8, 7.05);
-    \draw[->, thick] (8.4, 7.05) -- (9.0, 7.05);
+        % 1. BLOQUE DE LA CPU (Segmentación)
+        \draw[thick, fill=blue!5, rounded corners=3mm] (-0.5, 6.0) rectangle (11.5, 8.8);
+        \node[anchor=west, color=blue!80!black] at (0, 8.4) {\textbf{Núcleo Procesador HaDes-V (Pipeline de 5 Etapas)}};
+        
+        % Etapas internas
+        \draw[thick, fill=white] (0.2, 6.4) rectangle (1.8, 7.7) node[midway, align=center] {\textbf{\footnotesize Fetch}\\[-2pt]\tiny (IF)};
+        \draw[thick, fill=white] (2.4, 6.4) rectangle (4.0, 7.7) node[midway, align=center] {\textbf{\footnotesize Decode}\\[-2pt]\tiny (ID)};
+        \draw[thick, fill=white] (4.6, 6.4) rectangle (6.2, 7.7) node[midway, align=center] {\textbf{\footnotesize Execute}\\[-2pt]\tiny (EX)};
+        \draw[thick, fill=white] (6.8, 6.4) rectangle (8.4, 7.7) node[midway, align=center] {\textbf{\footnotesize Memory}\\[-2pt]\tiny (MEM)};
+        \draw[thick, fill=white] (9.0, 6.4) rectangle (10.8, 7.7) node[midway, align=center] {\textbf{\footnotesize Writeback}\\[-2pt]\tiny (WB)};
+        
+        \draw[->, thick] (1.8, 7.05) -- (2.4, 7.05);
+        \draw[->, thick] (4.0, 7.05) -- (4.6, 7.05);
+        \draw[->, thick] (6.2, 7.05) -- (6.8, 7.05);
+        \draw[->, thick] (8.4, 7.05) -- (9.0, 7.05);
 
-    % 2. NIVEL L1 (Cachés Independientes - Visión Harvard)
-    \draw[thick, fill=green!10, rounded corners=2mm] (0.0, 2.5) rectangle (3.2, 4.2);
-    \node[align=center] at (1.6, 3.35) {\textbf{\small I-Cache L1}\\[-2pt]\tiny Mapeo Directo};
+        % 2. NIVEL L1 (Cachés Independientes - Visión Harvard)
+        \draw[thick, fill=green!10, rounded corners=2mm] (0.0, 2.5) rectangle (3.2, 4.2);
+        \node[align=center] at (1.6, 3.35) {\textbf{\small I-Cache L1}\\[-2pt]\tiny Mapeo Directo};
 
-    \draw[thick, fill=orange!10, rounded corners=2mm] (5.2, 2.5) rectangle (8.4, 4.2);
-    \node[align=center] at (6.8, 3.35) {\textbf{\small D-Cache L1 (4KB)}\\[-2pt]\tiny Mapeo Directo};
+        \draw[thick, fill=orange!10, rounded corners=2mm] (5.2, 2.5) rectangle (8.4, 4.2);
+        \node[align=center] at (6.8, 3.35) {\textbf{\small D-Cache L1 (4KB)}\\[-2pt]\tiny Mapeo Directo};
 
-    \draw[thick, fill=red!10, rounded corners=1mm] (8.7, 2.5) rectangle (11.0, 4.2);
-    \node[align=center] at (9.85, 3.35) {\textbf{\small Write Buffer}\\[-2pt]\tiny FIFO (2 ent.)};
+        \draw[thick, fill=red!10, rounded corners=1mm] (8.7, 2.5) rectangle (11.0, 4.2);
+        \node[align=center] at (9.85, 3.35) {\textbf{\small Write Buffer}\\[-2pt]\tiny FIFO (2 ent.)};
 
-    % Conexiones CPU <-> L1
-    \draw[<->, very thick, green!60!black] (1.0, 6.4) -- (1.0, 4.2)
-      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Instrucciones};
+        % Conexiones CPU <-> L1
+        \draw[<->, very thick, green!60!black] (1.0, 6.4) -- (1.0, 4.2)
+        node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Instrucciones};
 
-    \draw[<->, very thick, orange!80!black] (7.2, 6.4) -- (7.2, 4.2)
-      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Lecturas (LW)};
+        \draw[<->, very thick, orange!80!black] (7.2, 6.4) -- (7.2, 4.2)
+        node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Lecturas (LW)};
 
-    \draw[->, very thick, red!80!black] (8.0, 6.4) -- (8.0, 4.8) -- (9.85, 4.8) -- (9.85, 4.2)
-      node[pos=0.5, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Escrituras (SW)};
+        \draw[->, very thick, red!80!black] (8.0, 6.4) -- (8.0, 4.8) -- (9.85, 4.8) -- (9.85, 4.2)
+        node[pos=0.5, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Escrituras (SW)};
 
-    \draw[->, dashed, thick, purple] (9.9, 6.4) -- (9.9, 5.65) -- (2.0, 5.65) -- (2.0, 4.2)
-      node[midway, right=1mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny \textbf{Cable Invalidación Global FENCE.I}};
+        \draw[->, dashed, thick, purple] (9.9, 6.4) -- (9.9, 5.65) -- (2.0, 5.65) -- (2.0, 4.2)
+        node[midway, right=1mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny \textbf{Cable Invalidación Global FENCE.I}};
 
-    % 3. ENRUTADOR MMIO Y ÁRBITRO DE BUS
-    \draw[thick, fill=purple!10, rounded corners=2mm] (0.0, 0.2) rectangle (7.0, 1.2);
-    \node at (3.5, 0.7) {\textbf{\footnotesize Árbitro de Bus Wishbone \& Router MMIO}};
+        % 3. ENRUTADOR MMIO Y ÁRBITRO DE BUS
+        \draw[thick, fill=purple!10, rounded corners=2mm] (0.0, 0.2) rectangle (7.0, 1.2);
+        \node at (3.5, 0.7) {\textbf{\footnotesize Árbitro de Bus Wishbone \& Router MMIO}};
 
-    % Conexiones L1 -> Árbitro
-    \draw[<->, thick, green!60!black] (1.6, 2.5) -- (1.6, 1.2)
-      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Miss I-Cache};
-    \draw[<->, thick, orange!80!black] (6.0, 2.5) -- (6.0, 1.2)
-      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Miss D-Cache};
-    \draw[->, thick, red!80!black] (9.85, 2.5) -- (9.85, 1.7) -- (7.0, 1.2)
-      node[midway, right=9mm, fill=white, inner sep=1.0pt, rounded corners=1pt] {\tiny Drenaje Buffer};
+        % Conexiones L1 -> Árbitro
+        \draw[<->, thick, green!60!black] (1.6, 2.5) -- (1.6, 1.2)
+        node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Miss I-Cache};
+        \draw[<->, thick, orange!80!black] (6.0, 2.5) -- (6.0, 1.2)
+        node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Miss D-Cache};
+        \draw[->, thick, red!80!black] (9.85, 2.5) -- (9.85, 1.7) -- (7.0, 1.2)
+        node[midway, right=9mm, fill=white, inner sep=1.0pt, rounded corners=1pt] {\tiny Drenaje Buffer};
 
-    % 4. MEMORIA PRINCIPAL Y PERIFÉRICOS
-    \draw[thick, fill=gray!20, rounded corners=2mm] (0.0, -1.8) rectangle (3.8, -0.6);
-    \node[align=center] at (1.9, -1.2) {\textbf{\footnotesize RAM Principal (BRAM)}\\[-2pt]\tiny Espacio Unificado};
+        % 4. MEMORIA PRINCIPAL Y PERIFÉRICOS
+        \draw[thick, fill=gray!20, rounded corners=2mm] (0.0, -1.8) rectangle (3.8, -0.6);
+        \node[align=center] at (1.9, -1.2) {\textbf{\footnotesize RAM Principal (BRAM)}\\[-2pt]\tiny Espacio Unificado};
 
-    \draw[thick, fill=yellow!20, rounded corners=2mm] (4.8, -1.8) rectangle (9.5, -0.6);
-    \node[align=center] at (7.15, -1.2) {\textbf{\small Periféricos MMIO}\\[-2pt]\tiny UART, HPCs, LEDs};
+        \draw[thick, fill=yellow!20, rounded corners=2mm] (4.8, -1.8) rectangle (9.5, -0.6);
+        \node[align=center] at (7.15, -1.2) {\textbf{\small Periféricos MMIO}\\[-2pt]\tiny UART, HPCs, LEDs};
 
-    % Conexiones Árbitro -> Memoria/MMIO
-    \draw[<->, very thick, blue!80!black] (1.9, 0.2) -- (1.9, -0.6)
-      node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Bus Wishbone};
-    \draw[<->, very thick, purple!80!black] (5.5, 0.2) -- (5.5, -0.6)
-      node[midway, right=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Acceso Directo Periféricos};
+        % Conexiones Árbitro -> Memoria/MMIO
+        \draw[<->, very thick, blue!80!black] (1.9, 0.2) -- (1.9, -0.6)
+        node[midway, left=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Bus Wishbone};
+        \draw[<->, very thick, purple!80!black] (5.5, 0.2) -- (5.5, -0.6)
+        node[midway, right=2mm, fill=white, inner sep=1.5pt, rounded corners=1pt] {\tiny Acceso Directo Periféricos};
 
-\end{tikzpicture}
-\caption{Esquema microarquitectónico de la Jerarquía de Memoria L1 en Arquitectura Harvard Modificada con invalidación \texttt{FENCE.I} y Write Buffer.}
-\label{fig:modified_harvard_architecture}
+    \end{tikzpicture}
+    \caption{Esquema microarquitectónico de la Jerarquía de Memoria L1 en Arquitectura Harvard Modificada con invalidación \texttt{FENCE.I} y Write Buffer.}
+    \label{fig:modified_harvard_architecture}
 \end{figure}
 \shorthandon{<>}
 
@@ -636,8 +637,8 @@ La separación Harvard en L1 introduce el problema de coherencia del ``código z
 nuevas instrucciones en la RAM a través del bus de datos (D-Cache / Write Buffer). Sin embargo, la I-Cache retiene copias desactualizadas del programa anterior.
 
 Para resolver este conflicto, se diseñó un cable de invalidación por hardware (línea discontinua morada en la Figura \ref{fig:modified_harvard_architecture}).
-Al ejecutar la instrucción estandarizada \textbf{\texttt{FENCE.I}}, la etapa de \textit{Writeback} emite un pulso que invalida de forma síncrona todos los bits
-de validez (\textit{valid bits}) de la I-Cache, forzando a la etapa de \textit{Fetch} a recargar el código fresco desde la memoria RAM.
+Al ejecutar la instrucción estandarizada \textbf{\texttt{FENCE.I}} \cite{riscv_spec}, la etapa de \textit{Writeback} emite un pulso que invalida de forma síncrona 
+todos los bits de validez (\textit{valid bits}) de la I-Cache, forzando a la etapa de \textit{Fetch} a recargar el código fresco desde la memoria RAM.
 
 
 \section{Diagnóstico y Resolución de Fallos}
@@ -656,7 +657,7 @@ sincronización que requerían un diagnóstico riguroso. A continuación, se exp
     \textbf{Síntoma:} Al insertar la estructura base de la caché de instrucciones, la ejecución de \textit{Matrix Mult} registró un incremento de exactamente 512
     purgas (\textit{flushes}) en la BHT, a pesar de que el código binario no había sufrido cambios.
 
-    \textbf{Causa:} El fallo no residía en el RTL de SystemVerilog. Al modificar la jerarquía de módulos, el simulador \textbf{Verilator} (compilado a C++)
+    \textbf{Causa:} El fallo no residía en el RTL de SystemVerilog. Al modificar la jerarquía de módulos, el simulador \textbf{Verilator} \cite{verilator} (compilado a C++)
     generó una semilla de aleatorización distinta para los registros no inicializados explícitamente. Mientras que la FPGA Xilinx infiere un reseteo implícito a
     cero (\textit{Strongly Not-Taken}), Verilator arrancó la mitad de las 4096 entradas ($2^9 = 512$) en el estado inverso (\textit{Strongly Taken}), provocando un
     patrón masivo de errores de especulación iniciales.
@@ -849,10 +850,11 @@ El contador de hardware capturó exactamente \textbf{$30.718$ ciclos} en la vers
 $0,506$ a $0,829$.
 
 \subsubsection{Análisis de Aliasing y Capacidad: BHT 1K vs. BHT 4K}
-\begin{conceptbox}{El Punto Dulce del Predictor Bimodal según Hennessy \& Patterson}
-    En la literatura fundamental de arquitectura de computadores, Hennessy y Patterson establecen que una BHT de \textbf{$4.096$ entradas (4K)} representa el «punto dulce» 
-    (\textit{sweet spot}) en predictores bimodales de 2 bits. Con un consumo estricto de $1\text{ KB}$ de SRAM ($8.192\text{ bits}$), esta capacidad maximiza la tasa de 
-    aciertos eliminando prácticamente el \textit{aliasing} (colisiones de saltos distintos en la misma celda) antes de alcanzar la zona de rendimientos decrecientes.
+\begin{conceptbox}{El Punto Dulce del Predictor Bimodal}
+    En la literatura fundamental de arquitectura de computadores, Hennessy y Patterson establecen que una BHT de \textbf{$4.096$ entradas (4K)} representa el «punto 
+    dulce» \cite{hennessy2025} (\textit{sweet spot}) en predictores bimodales de 2 bits. Con un consumo estricto de $1\text{ KB}$ de SRAM ($8.192\text{ bits}$), esta 
+    capacidad maximiza la tasa de aciertos eliminando prácticamente el \textit{aliasing} (colisiones de saltos distintos en la misma celda) antes de alcanzar la zona 
+    de rendimientos decrecientes.
 \end{conceptbox}
 
 Durante la fase de caracterización se evaluó el comportamiento del procesador variando la capacidad de la BHT entre $1.024$ ($1\text{K}$) y $4.096$ ($4\text{K}$) 
@@ -1049,8 +1051,8 @@ La arquitectura consolidada de HaDes-V constituye una base sólida para abordar 
 
 \begin{thebibliography}{99}
 
-\bibitem{hennessy2019}
-J.~L. Hennessy and D.~A. Patterson, \textit{Computer Architecture: A Quantitative Approach}, 6th~ed., Morgan Kaufmann, 2019.
+\bibitem{hennessy2025}
+J.~L. Hennessy and D.~A. Patterson, \textit{Computer Architecture: A Quantitative Approach}, 7th~ed., Morgan Kaufmann, 2025.
 
 \bibitem{scheipel2024}
 T.~Scheipel, D.~Beikircher, and F.~Riedl, \textit{Microcontroller Design, Laboratory Instruction Guide: HADES-V}, Graz University of Technology, Dec. 2024.
