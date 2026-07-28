@@ -5,7 +5,7 @@
 % ============================================================
 \usepackage{fontspec}
 %\setmainfont{Myriad Pro}        % Fuente principal (compilar con XeLaTeX)
-\usepackage[spanish]{babel}
+\usepackage[spanish,es-tabla]{babel}
 \usepackage{graphicx}
 \usepackage{geometry}
 \usepackage{fancyhdr}
@@ -294,9 +294,9 @@ proporcionaba un flujo de trabajo compuesto por:
     ejecutable C++, permitiendo simular millones de ciclos de reloj por segundo y depurar fallos mediante trazas de señales (\textit{waveforms}).
     \item \textbf{Síntesis e Implementación Física (Xilinx Vivado):} Toolchain \textbf{AMD Xilinx Vivado} \cite{vivado} ejecutada mediante scripts automatizados 
     Tcl y un \textit{Makefile} principal, encargada de traducir el código SystemVerilog a puertas lógicas y cables físicos sobre el chip FPGA.
-    \item \textbf{Toolchain de Software y Co-Diseño:} Uso del compilador \texttt{riscv64-unknown-elf-gcc} restringido al subconjunto de enteros 
-    \texttt{-march=rv32i -mabi=ilp32} \cite{riscv_spec}. Los binarios finales se cargan en la FPGA mediante un \textit{Bootloader} residente en la memoria interna de la placa 
-    comunicándose por enlace serie UART.
+    \item \textbf{Toolchain de Software y Co-Diseño:} Uso del compilador \texttt{riscv32-unknown-elf-gcc} restringido al subconjunto de enteros 
+    \texttt{-with-arch=rv32i} \cite{riscv_spec} \cite{scheipel2024}. Los binarios finales se cargan en la FPGA mediante un \textit{Bootloader} residente en la memoria 
+    interna de la placa comunicándose por enlace serie UART.
 \end{itemize}
 
 Si bien el proyecto estaba originalmente planteado para ser ejecutado sobre placas FPGA Digilent Basys 3, para este trabajo contamos con la cesión por parte 
@@ -729,7 +729,7 @@ sincronización que requerían un diagnóstico riguroso. A continuación, se exp
     periférico, se fuerza una parada (\textit{stall}) hasta que el \textit{Write Buffer} haya vaciado completamente sus entradas y el bus esté en absoluto silencio.
 \end{bugbox}
 
-\begin{bugbox}{Incoherencia de Código y Resolución del Bug del "Código Zombie"}
+\begin{bugbox}{Incoherencia de Código y Resolución del Bug del ``Código Zombie''}
     \textbf{Síntoma:} Tras recibir un nuevo ejecutable \texttt{.hex} a través del Bootloader por puerto serie UART, el procesador saltaba a la dirección inicial del
     nuevo programa, pero ejecutaba instrucciones obsoletas del programa anterior o entraba en trampa de excepción.
 
@@ -955,25 +955,25 @@ procesador operará a $100\text{ MHz}$ de forma determinista, estable y térmica
 La evolución física del diseño sintetizado para la FPGA \textbf{Digilent Nexys A7-100T} \cite{nexys_a7} se presenta en la Tabla \ref{tab:vivado_synthesis_evolution}.
 
 \begin{table}[H]
-\centering
-\small
-\caption{Radiografía de síntesis física e implementación en AMD Xilinx Vivado.}
-\label{tab:vivado_synthesis_evolution}
-\begin{tabularx}{\textwidth}{L c c c}
-\toprule
-\textbf{Métrica de Síntesis} & \textbf{1. Baseline} & \textbf{2. BHT Predictor} & \textbf{3. L1 Cache + BHT (Final)} \\
-\midrule
-Worst Negative Slack (WNS) & \textbf{-0,039 ns (Falla)} & \textbf{+0,319 ns (Pasa)} & \textbf{+0,036 ns (Pasa)} \\
-Total Negative Slack (TNS) & -0,042 ns & 0,000 ns & 0,000 ns \\
-Failing Endpoints & 2 / 11.452 & 0 / 11.988 & 0 / 26.222 (27.993 Ext.) \\
-Utilización de LUTs & 6.128 (9\%) & 5.975 (9\%) & 9.289 (15\%) \\
-Utilización de LUTRAM & 0\% & 1\% & 10\% \\
-Flip-Flops (FF) & 3\% & 3\% & 3\% \\
-Bloques de Memoria (BRAM) & 34\% (46,5 BRAMs) & 34\% (46,5 BRAMs) & 34\% (46,5 BRAMs) \\
-Consumo de Potencia (On-Chip) & 0,528 W & 0,532 W & 0,540 W \\
-Margen Térmico & 57,6 $^\circ\text{C}$ & 57,6 $^\circ\text{C}$ & 57,5 $^\circ\text{C}$ \\
-\bottomrule
-\end{tabularx}
+    \centering
+    \small
+    \caption{Radiografía de síntesis física e implementación en AMD Xilinx Vivado.}
+    \label{tab:vivado_synthesis_evolution}
+    \begin{tabularx}{\textwidth}{L c c c}
+        \toprule
+        \textbf{Métrica de Síntesis} & \textbf{1. Baseline} & \textbf{2. BHT Predictor} & \textbf{3. L1 Cache + BHT (Final)} \\
+        \midrule
+        Worst Negative Slack (WNS) & \textbf{-0,039 ns (Falla)} & \textbf{+0,319 ns (Pasa)} & \textbf{+0,036 ns (Pasa)} \\
+        Total Negative Slack (TNS) & -0,042 ns & 0,000 ns & 0,000 ns \\
+        Failing Endpoints & 2 / 11.452 & 0 / 11.988 & 0 / 26.222 (27.993 Ext.) \\
+        Utilización de LUTs & 6.128 (9\%) & 5.975 (9\%) & 9.289 (15\%) \\
+        Utilización de LUTRAM & 0\% & 1\% & 10\% \\
+        Flip-Flops (FF) & 3\% & 3\% & 3\% \\
+        Bloques de Memoria (BRAM) & 34\% (46,5 BRAMs) & 34\% (46,5 BRAMs) & 34\% (46,5 BRAMs) \\
+        Consumo de Potencia (On-Chip) & 0,528 W & 0,532 W & 0,540 W \\
+        Margen Térmico & 57,6 $^\circ\text{C}$ & 57,6 $^\circ\text{C}$ & 57,5 $^\circ\text{C}$ \\
+        \bottomrule
+    \end{tabularx}
 \end{table}
 
 \subsubsection{Análisis del Cierre Temporal y Evolución del Camino Crítico}
