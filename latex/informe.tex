@@ -490,7 +490,7 @@ El funcionamiento en el cauce de instrucciones se ilustra en la Figura \ref{fig:
 
 \subsubsection{Aceleración Transparente mediante JAL Bypass}
 Además de los saltos condicionales, el análisis de nuestras cargas de trabajo reveló una sobrecarga apreciable en instrucciones de salto incondicional
-(\texttt{JAL} - \textit{Jump and Link}). Al no contar el núcleo con la extensión de multiplicación por hardware (RV32M), el compilador emite constantes llamadas
+(\texttt{JAL} - \textit{Jump and Link}) \cite{riscv_spec}. Al no contar el núcleo con la extensión de multiplicación por hardware (RV32M), el compilador emite constantes llamadas
 a la subrutina del sistema \texttt{\_\_mulsi3} para emular multiplicaciones por software. % Añadir segmento de codigo ASM del benchmark compilado
 
 Debido a que una instrucción \texttt{JAL} se toma siempre con un 100\% de certeza, resultaba ineficiente pagar penalizaciones de ciclo esperando a que la
@@ -693,7 +693,7 @@ sincronización que requerían un diagnóstico riguroso. A continuación, se exp
 \end{bugbox}
 
 \begin{bugbox}{Desfase de Fase en el Bus Wishbone (5 ACKs para 4 Palabras)}
-    \textbf{Síntoma:} Las trazas de señales del bus Wishbone revelaron que la memoria RAM entregaba 5 datos para una ráfaga diseñada estrictamente para 4 palabras
+    \textbf{Síntoma:} Las trazas de señales del bus Wishbone \cite{wishbone_spec} revelaron que la memoria RAM entregaba 5 datos para una ráfaga diseñada estrictamente para 4 palabras
     (16 bytes), pidiendo la primera dirección dos veces seguidas.
 
     \textbf{Causa:} Las señales maestras del bus (\texttt{mem\_port.adr}) estaban asignadas dentro del bloque secuencial de la FSM (\texttt{always\_ff}). Al
@@ -1035,7 +1035,7 @@ La arquitectura consolidada de HaDes-V constituye una base sólida para abordar 
     \item \textbf{Extensión de Multiplicación/División por Hardware (RV32M):} Incorporar una unidad multiplicadora segmentada para eliminar las $1.024$
     llamadas a la subrutina de software \texttt{\_\_mulsi3} detectadas en el \textit{Instruction Mix}, permitiendo que cargas aritméticas alcancen el límite
     escalar ($IPC \approx 1,0$).
-    \item \textbf{Especulación Global Correlacionada (Predictor Gshare):} Evolucionar la BHT bimodal hacia un predictor de tipo \textit{Gshare} que combine el
+    \item \textbf{Especulación Global Correlacionada (Predictor Gshare):} Evolucionar la BHT bimodal hacia un predictor de tipo \textit{Gshare} \cite{hennessy2025} que combine el
     historial global de saltos con los bits del PC mediante una operación XOR, mejorando la precisión en bucles con ramas condicionales anidadas o
     interdependientes.
     \item \textbf{Interrupciones y Tiempo Real:} Implementar un controlador de interrupciones para dotar al procesador de capacidad de
