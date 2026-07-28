@@ -186,14 +186,24 @@ hardware real.
 
 Para comprender el punto de partida sin perderse en tecnicismos y siglas, es importante definir las bases de la arquitectura:
 \begin{itemize}
-    \item \textbf{RISC-V (RV32I):} Es una arquitectura de conjunto de instrucciones (\textit{ISA}) abierta y libre de 32 bits. La nomenclatura \texttt{RV32I}
-    indica que soporta el subconjunto base de instrucciones enteras básicas (sumas, restas, accesos a memoria y saltos), actuando como el «vocabulario estándar» 
-    que entiende la CPU.
-    \item \textbf{Procesador Escalar Single-Issue Bare-Metal:} Significa que el procesador procesa las instrucciones una a una de forma estrictamente secuencial 
-    (\textit{single-issue}), ejecutando el programa escrito directamente sobre el circuito electrónico (\textit{bare-metal}) sin intermediación de un sistema
-    operativo.
-    \item \textbf{Modo Máquina (M-Mode):} Es el nivel de privilegio de ejecución único con acceso total e irrestricto a los recursos físicos del silicio, 
-    idéntico al funcionamiento de los microcontroladores empotrados en la industria.
+    \item \textbf{RISC-V (RV32I):} Arquitectura de conjunto de instrucciones (\textit{ISA}) abierta y libre de 32 bits. La especificación \texttt{RV32I} constituye 
+    el subconjunto base de instrucciones enteras (operaciones aritmético-lógicas, accesos a memoria y saltos de control), actuando como el «vocabulario estándar» 
+    que entiende el procesador.
+    \item \textbf{Ejecución \textit{Bare-Metal}:} Paradigma de funcionamiento en el cual el programa ejecutable interactúa directamente sobre la electrónica y los 
+    registros del hardware, sin capas de abstracción ni la intermediación de un sistema operativo.
+    \item \textbf{Modo Máquina (M-Mode):} Nivel de privilegio de ejecución único implementado en el procesador, que otorga acceso directo, completo e irrestricto a 
+    todos los recursos físicos del silicio y a la gestión global del sistema.
+    \item \textbf{Bus Wishbone:} Estándar abierto e independiente de arquitectura para la interconexión síncrona en sistemas en chip (\textit{SoC}). Define la 
+    interfaz de señales mediante la cual la CPU se comunica con la jerarquía L1, la memoria RAM y los periféricos.
+    \item \textbf{MMIO (\textit{Memory-Mapped I/O}):} Esquema de entrada/salida donde los registros de control de los periféricos (UART, LEDs, contadores de 
+    rendimiento) se ubican dentro del mismo espacio de direccionamiento que la RAM, permitiendo su acceso mediante instrucciones estándar de lectura y escritura 
+    (\texttt{LW}/\texttt{SW}).
+    \item \textbf{Registros CSR (\textit{Control and Status Registers}):} Registros del sistema pertenecientes a la especificación RISC-V (independientes del banco 
+    de registros general \texttt{x0}--\texttt{x31}) destinados a la configuración, consulta del estado interno del procesador y extracción de telemetría de rendimiento 
+    en hardware.
+    \item \textbf{Síntesis en FPGA y BRAM:} Proceso de síntesis física e implementación del diseño RTL (escrito en SystemVerilog) sobre un circuito integrado 
+    reconfigurable (\textit{FPGA} Xilinx Artix-7), empleando bloques de memoria SRAM interna (\textit{Block RAM} -- BRAM) para albergar la memoria principal del 
+    microcontrolador.
 \end{itemize}
 
 \subsection{Motivaciones para la mejora del diseño base: Los Muros del Control y de la Memoria}
